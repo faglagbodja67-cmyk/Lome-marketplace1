@@ -1,0 +1,2310 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LOME MARKETPLACE</title>
+    <script>
+      const isLocalDevelopment = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (isLocalDevelopment && window.location.port !== '8080') {
+        window.location.replace('http://127.0.0.1:8080/');
+      }
+    </script>
+    <style>
+      :root {
+        --blue: #0f5bd8;
+        --blue-2: #1e8bff;
+        --green: #0c7d4d;
+        --dark: #0d1d34;
+        --text: #10233f;
+        --muted: #536b8c;
+        --panel: #ffffff;
+        --soft: #edf5ff;
+        --border: #dfeaff;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-padding-top: calc(var(--topbar-height, 0px) + 1rem); }
+      body {
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: linear-gradient(180deg, #f5f9ff 0%, #eef6ff 100%);
+        color: var(--text);
+      }
+      a { color: inherit; text-decoration: none; }
+      .container { width: min(1280px, calc(100% - 2rem)); margin: 0 auto; }
+      .topbar {
+        position: sticky; top:0; z-index:10;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+      }
+      .topbar-inner {
+        display: grid; grid-template-columns: minmax(220px, auto) minmax(360px, 1fr); grid-template-areas: "brand search" "nav actions"; gap: .65rem 1rem; align-items:center; padding: .75rem 0;
+      }
+      .brand { grid-area:brand; display:flex; align-items:center; gap: 0.8rem; }
+      .brand-mark { width: 3rem; height: 3rem; border-radius: 1rem; display:grid; place-items:center; background: linear-gradient(135deg, var(--blue), #22a06b); color:white; font-weight:bold; }
+      .brand-name { font-weight: 800; letter-spacing: 0.08em; }
+      .brand-subtitle { font-size: 0.72rem; color: var(--muted); }
+      .search { grid-area:search; display:flex; align-items:center; gap:.75rem; border:1px solid var(--border); border-radius:14px; background:#f5f8fe; padding: 0.7rem 0.9rem; }
+      .search input { border:none; background:transparent; outline:none; font-size:1rem; flex:1; }
+      .nav { grid-area:nav; display:flex; justify-content:flex-start; flex-wrap:wrap; gap:0.5rem; }
+      .nav a { padding:0.55rem 0.8rem; border-radius:999px; color:#35557d; font-weight:600; }
+      .nav a.active, .nav a:hover { background:#e9f3ff; color: var(--blue); }
+      .actions { grid-area:actions; display:flex; justify-content:flex-end; gap:0.7rem; flex-wrap:wrap; }
+      .btn { border:none; cursor:pointer; border-radius:12px; padding: 0.8rem 1.2rem; font-weight:700; transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease; }
+      .btn:hover { transform: translateY(-1px); }
+      .btn.primary { background: linear-gradient(135deg, var(--blue), var(--blue-2)); color:white; box-shadow:0 10px 25px rgba(14,89,195,0.25); }
+      .btn.secondary { background:#e6f7ed; color:#0f8a5d; }
+      .btn.ghost { background:white; border:1px solid var(--border); color: var(--text); }
+      .btn.dark { background:#0f172a; color:white; }
+      .category-card, .product-card, .shop-card, .faq-item, .mini-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+      }
+      .category-card:hover, .product-card:hover, .shop-card:hover, .faq-item:hover, .mini-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(15, 40, 79, 0.08);
+      }
+      .hidden { display: none !important; }
+      .search { position: relative; }
+      .status-message { margin: 0; color: var(--muted); font-size: .82rem; }
+      #search-status { position: absolute; top: calc(100% + .35rem); left: .8rem; z-index: 2; }
+      .auth-status { max-width: 14rem; }
+      .auth-dialog { width: min(440px, calc(100% - 2rem)); padding: 1.5rem; border: 1px solid var(--border); border-radius: 24px; color: var(--text); box-shadow: 0 24px 80px rgba(13, 29, 52, .25); }
+      .auth-dialog::backdrop { background: rgba(13, 29, 52, .55); backdrop-filter: blur(3px); }
+      .auth-dialog form { display: grid; gap: 1rem; }
+      .auth-dialog h2 { margin: 0; }
+      .auth-dialog label { display: grid; gap: .4rem; color: #35557d; font-weight: 700; }
+      .auth-dialog input { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: .8rem; font: inherit; }
+      .auth-dialog [hidden] { display: none !important; }
+      .auth-dialog [role="alert"] { color: #b42318; min-height: 1.2rem; }
+      .auth-dialog .dialog-top { display: flex; align-items: center; justify-content: space-between; }
+      .auth-dialog .dialog-close { border: 0; background: transparent; font-size: 1.5rem; cursor: pointer; }
+      .favorite[aria-pressed="true"] { color:#d92d20; font-size:1.2rem; }
+      .actions-status { width:100%; text-align:right; }
+      .dialog-list { display:grid; gap:.8rem; max-height:50vh; overflow:auto; padding:0; list-style:none; }
+      .dialog-list li { display:flex; justify-content:space-between; gap:1rem; padding:.8rem; border:1px solid var(--border); border-radius:12px; }
+      .faq-item { padding:0; overflow:hidden; }
+      .faq-item summary { padding:1rem; cursor:pointer; }
+      .faq-item p { margin:0; padding:0 1rem 1rem; color:var(--muted); font-weight:400; line-height:1.6; }
+      .footer a { color:inherit; }
+      .footer a:hover { color:white; text-decoration:underline; }
+      .info-shell { min-height:65vh; }
+      .info-hero { display:grid; grid-template-columns:1.2fr .8fr; gap:1.5rem; align-items:stretch; overflow:hidden; margin-bottom:1.5rem; padding:0; background:#fff; border:1px solid var(--border); border-radius:30px; }
+      .info-hero-copy { padding:clamp(1.5rem,4vw,3.5rem); }
+      .info-hero-copy h1 { margin:.8rem 0; font-size:clamp(2rem,5vw,3.3rem); letter-spacing:-.04em; line-height:1.05; }
+      .info-hero-copy p { max-width:48rem; color:var(--muted); font-size:1.05rem; line-height:1.75; }
+      .info-hero-image { min-height:300px; width:100%; height:100%; object-fit:cover; }
+      .info-section-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:1.5rem; }
+      .info-section-card { padding:1.35rem; border:1px solid var(--border); border-radius:20px; background:#fff; }
+      .info-section-card h2 { margin:.1rem 0 .65rem; font-size:1.2rem; }
+      .info-section-card p { margin:0; color:var(--muted); line-height:1.7; }
+      .info-actions { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:1.3rem; }
+      .info-back { color:var(--blue); font-weight:700; }
+      .image-editor { margin-top:1.5rem; padding:1.5rem; border:1px solid var(--border); border-radius:24px; background:#fff; }
+      .image-editor h2 { margin:.1rem 0 .5rem; }
+      .image-editor > p { color:var(--muted); line-height:1.6; }
+      .payment-preparation { margin:1.5rem 0; padding:1.4rem; border:1px solid var(--border); border-radius:20px; background:#fff; }
+      .payment-preparation h2, .vendor-payment-settings h2 { margin:.1rem 0 .6rem; font-size:1.25rem; }
+      .payment-method-list { display:flex; flex-wrap:wrap; gap:.55rem; margin:.9rem 0; }
+      .payment-method-badge { padding:.5rem .8rem; border:1px solid #d9e8ff; border-radius:999px; background:#f3f8ff; color:#174a88; font-weight:800; }
+      .payment-note { color:var(--muted); font-size:.9rem; line-height:1.6; }
+      .payment-preparation .btn:disabled { cursor:not-allowed; opacity:.65; }
+      .vendor-payment-settings { margin:1.5rem 0; padding:1.4rem; border:1px solid var(--border); border-radius:20px; background:#fff; }
+      .vendor-payment-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-top:1rem; }
+      .vendor-payment-form label { display:grid; gap:.4rem; color:#35557d; font-weight:700; }
+      .vendor-payment-form input { width:100%; padding:.8rem; border:1px solid var(--border); border-radius:12px; font:inherit; }
+      .vendor-payment-form button, .vendor-payment-form .payment-note { grid-column:1/-1; justify-self:start; }
+      .admin-payment-report { margin-bottom:1.5rem; }
+      .admin-payment-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; margin:1rem 0; }
+      .admin-payment-metric { padding:.9rem; border-radius:14px; background:#f3f8ff; }
+      .admin-payment-metric strong { display:block; color:var(--blue); font-size:1.25rem; }
+      .admin-payment-metric span { color:var(--muted); font-size:.8rem; }
+      .image-slot-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+      .image-slot { display:grid; gap:.6rem; padding:1rem; border:1px dashed #8ba8d3; border-radius:18px; background:#f7faff; cursor:pointer; }
+      .image-slot strong { font-size:.9rem; }
+      .image-slot input { width:100%; font:inherit; font-size:.8rem; }
+      .image-slot img { width:100%; height:150px; border-radius:12px; background:#eaf1fb; object-fit:cover; }
+      .image-slot-placeholder { display:grid; place-items:center; height:150px; border-radius:12px; background:#eaf1fb; color:var(--muted); font-size:2rem; }
+      .editor-status { min-height:1.2rem; color:var(--green); font-weight:700; }
+      .category-image { width:3.4rem; height:3.4rem; flex:none; border-radius:14px; object-fit:cover; background:#e6f0ff; }
+      .shop-cover { width:100%; height:125px; margin-bottom:.9rem; border-radius:14px; object-fit:cover; background:#edf4ff; }
+      .made-item { overflow:hidden; padding:0; }
+      .made-item img { width:100%; height:118px; object-fit:cover; }
+      .made-item strong, .made-item small { padding:0 .7rem; }
+      .made-item small { padding-bottom:.8rem; }
+      .chat-widget { position:fixed; right:1.25rem; bottom:1.25rem; z-index:30; display:grid; justify-items:end; gap:.8rem; }
+      .chat-launcher { display:flex; align-items:center; gap:.65rem; min-height:3.4rem; padding:.75rem 1.1rem; border:0; border-radius:999px; background:linear-gradient(135deg,var(--blue),var(--blue-2)); color:white; font:inherit; font-weight:800; box-shadow:0 12px 30px rgba(14,89,195,.3); cursor:pointer; }
+      .chat-panel { display:grid; grid-template-rows:auto 1fr auto auto; width:min(390px,calc(100vw - 2rem)); height:min(540px,calc(100dvh - 7rem)); overflow:hidden; border:1px solid var(--border); border-radius:22px; background:white; box-shadow:0 24px 70px rgba(13,29,52,.24); }
+      .chat-panel[hidden] { display:none; }
+      .chat-header { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:1rem 1.1rem; background:linear-gradient(135deg,#123875,#0f5bd8); color:white; }
+      .chat-header h2 { margin:0; font-size:1rem; }
+      .chat-header p { margin:.2rem 0 0; color:#d5e5ff; font-size:.78rem; }
+      .chat-close { width:2.1rem; height:2.1rem; border:0; border-radius:50%; background:rgba(255,255,255,.15); color:white; font-size:1.35rem; cursor:pointer; }
+      .chat-messages { display:flex; flex-direction:column; align-items:flex-start; gap:.8rem; overflow-y:auto; padding:1rem; overscroll-behavior:contain; }
+      .chat-message { max-width:90%; padding:.7rem .85rem; border-radius:16px 16px 16px 5px; background:#edf4ff; color:var(--text); font-size:.9rem; line-height:1.5; overflow-wrap:anywhere; }
+      .chat-message.user { align-self:flex-end; border-radius:16px 16px 5px 16px; background:#0f5bd8; color:white; }
+      .chat-message a { display:inline-block; margin-top:.4rem; color:var(--blue); font-weight:800; text-decoration:underline; }
+      .chat-product { display:grid; grid-template-columns:3.5rem 1fr; align-items:center; gap:.7rem; width:100%; margin-top:.55rem; padding:.5rem; border:1px solid var(--border); border-radius:12px; background:white; }
+      .chat-product img { width:3.5rem; height:3.5rem; border-radius:9px; object-fit:cover; background:#edf4ff; }
+      .chat-product strong, .chat-product span { display:block; }
+      .chat-product strong { font-size:.82rem; }
+      .chat-product span { margin-top:.2rem; color:var(--blue); font-size:.8rem; font-weight:800; }
+      .chat-suggestions { display:flex; gap:.45rem; overflow-x:auto; padding:.2rem .8rem .7rem; }
+      .chat-suggestions button { flex:none; padding:.45rem .65rem; border:1px solid var(--border); border-radius:999px; background:#f7faff; color:#35557d; font:inherit; font-size:.75rem; cursor:pointer; }
+      .chat-form { display:grid; grid-template-columns:1fr auto; gap:.5rem; padding:.75rem; border-top:1px solid var(--border); }
+      .chat-form input { min-width:0; padding:.75rem .85rem; border:1px solid var(--border); border-radius:12px; font:inherit; }
+      .chat-form button { padding:.7rem .9rem; border:0; border-radius:12px; background:var(--blue); color:white; font:inherit; font-weight:800; cursor:pointer; }
+      .chat-form button:disabled { cursor:wait; opacity:.6; }
+      .admin-shell { min-height:70vh; padding:3rem 1rem; }
+      .admin-card { width:min(560px, 100%); margin:0 auto; padding:2rem; background:white; border:1px solid var(--border); border-radius:24px; box-shadow:0 16px 48px rgba(15,40,79,.09); }
+      .admin-card h1 { font-size:2rem; line-height:1.1; letter-spacing:-.03em; }
+      .admin-card form { display:grid; gap:1rem; margin-top:1.5rem; }
+      .admin-card label { display:grid; gap:.4rem; color:#35557d; font-weight:700; }
+      .admin-card input { width:100%; border:1px solid var(--border); border-radius:12px; padding:.8rem; font:inherit; }
+      .admin-message { min-height:1.5rem; margin:.8rem 0 0; color:#b42318; }
+      .admin-topbar { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.5rem; }
+      .admin-topbar h1 { margin:0; font-size:2rem; }
+      .admin-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin-bottom:1.5rem; }
+      .admin-stat, .admin-section { padding:1.2rem; border:1px solid var(--border); border-radius:18px; background:white; }
+      .admin-stat strong { display:block; color:var(--blue); font-size:1.8rem; }
+      .admin-tables { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+      .admin-section h2 { margin:.1rem 0 1rem; font-size:1.2rem; }
+      .admin-table-wrap { overflow-x:auto; }
+      .admin-table { width:100%; border-collapse:collapse; text-align:left; }
+      .admin-table th, .admin-table td { padding:.75rem .5rem; border-bottom:1px solid var(--border); white-space:nowrap; }
+      .admin-table th { color:var(--muted); font-size:.82rem; }
+      .admin-empty { color:var(--muted); }
+      .admin-back { display:inline-block; margin-top:1.2rem; color:var(--blue); font-weight:700; }
+      @media(max-width:800px) {
+        .admin-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .admin-tables { grid-template-columns:1fr; }
+        .info-hero { grid-template-columns:1fr; }
+        .info-hero-image { max-height:260px; }
+        .admin-payment-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      }
+      @media(max-width:480px) {
+        .admin-topbar { align-items:flex-start; flex-direction:column; }
+        .admin-card { padding:1.3rem; }
+        .chat-widget { right:.7rem; bottom:.7rem; }
+        .chat-panel { width:calc(100vw - 1.4rem); height:min(510px,calc(100dvh - 5.5rem)); }
+        .vendor-payment-form { grid-template-columns:1fr; }
+      }
+      .auth-dialog .auth-switch { border: 0; background: transparent; color: var(--blue); cursor: pointer; font: inherit; font-weight: 700; }
+      main { padding: 1.5rem 0 3rem; }
+      .hero {
+        display:grid; grid-template-columns:1.5fr 1fr; gap:1.5rem; background: rgba(255,255,255,0.82); border:1px solid var(--border); border-radius: 30px; padding:2rem; margin-bottom:1.5rem;
+      }
+      .eyebrow { display:inline-block; background:#e7f9ef; color:var(--green); border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; padding:0.45rem 0.8rem; margin-bottom:0.9rem; }
+      h1 { margin:0; font-size: clamp(2.2rem, 5vw, 4.1rem); line-height:0.9; letter-spacing:-0.06em; }
+      h2 { margin: 1rem 0; font-size: clamp(1.2rem, 2vw, 1.8rem); color:#214671; }
+      .hero p { color:#405a7d; line-height:1.7; max-width:60ch; }
+      .hero-actions { display:flex; flex-wrap:wrap; gap:.8rem; margin-top:1.2rem; }
+      .hero-visual { display:flex; flex-direction:column; gap:1rem; }
+      .visual { position:relative; min-height:250px; border-radius:24px; overflow:hidden; background: linear-gradient(135deg, #dfeeff, #edf7ff); }
+      .visual img { width:100%; height:100%; object-fit:cover; display:block; }
+      .visual-badge { position:absolute; top:1rem; left:1rem; background: rgba(9,117,75,0.12); color:var(--green); border-radius:999px; padding:0.5rem 0.8rem; font-weight:700; }
+      .mini-stats { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:1rem; }
+      .mini-card { border:1px solid var(--border); background:#f6f9ff; border-radius:20px; padding:1rem; }
+      .mini-card strong { font-size:1.5rem; display:block; }
+      .section { background: rgba(255,255,255,0.82); border:1px solid var(--border); border-radius:30px; padding:1.5rem; margin-bottom:1.5rem; }
+      .section-header { display:flex; justify-content:space-between; gap:1rem; align-items:flex-end; margin-bottom:1.2rem; }
+      .section-header h3 { margin:0; font-size:clamp(1.5rem, 2vw, 2.1rem); }
+      .section-header p { margin:0; color: var(--muted); }
+      .category-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:1rem; }
+      .category-card { display:flex; align-items:center; gap:0.9rem; padding:1.2rem; border:1px solid #e2ebfd; border-radius:20px; background: linear-gradient(180deg, #f9fbff 0%, #f0f7ff 100%); color:var(--text); text-align:left; cursor:pointer; }
+      .category-card > span:last-child { display:grid; gap:.25rem; }
+      .category-count { color:var(--muted); font-size:.82rem; }
+      .category-icon { width:3rem; height:3rem; display:grid; place-items:center; background:#e6f0ff; border-radius:14px; font-size:1.5rem; }
+      .category-card h4 { margin:0 0 .3rem; }
+      .category-card p { margin:0; color:#536b8c; font-size:0.88rem; }
+      .product-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:1rem; }
+      .product-card { border:1px solid #e2ebfc; border-radius:22px; overflow:hidden; background:white; }
+      .product-image { position:relative; height:230px; background:#edf4ff; }
+      .product-image img { width:100%; height:100%; object-fit:cover; }
+      .discount { position:absolute; left:0.8rem; top:0.8rem; background: rgba(255,99,71,0.9); color:white; padding:0.4rem 0.7rem; border-radius:999px; font-size:.74rem; font-weight:800; }
+      .favorite { position:absolute; right:0.8rem; top:0.8rem; width:2.2rem; height:2.2rem; border:none; border-radius:50%; background: rgba(255,255,255,0.9); }
+      .product-body { padding:1rem; }
+      .topline { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; color:#42638c; font-size:0.82rem; }
+      .verified { background:#e7f8eb; color:#107d46; padding:0.2rem 0.55rem; border-radius:999px; font-size:0.72rem; font-weight:700; }
+      .product-body h4 { margin:0.8rem 0 0.6rem; color:#0c1730; }
+      .stars { color:#4d647e; font-size:0.82rem; }
+      .price { display:flex; align-items:baseline; gap:0.6rem; margin:0.8rem 0; }
+      .price strong { color: var(--blue); font-size:1.44rem; }
+      .old { color:#8aa0b8; text-decoration: line-through; font-size:0.82rem; }
+      .meta { display:flex; justify-content:space-between; font-size:0.75rem; color:#4d647e; }
+      .card-actions { display:flex; gap:0.7rem; margin-top:1rem; }
+      .btn.small { padding:0.7rem 1rem; }
+      .shop-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:1rem; }
+      .shop-card { padding:1rem; border:1px solid #e5edf8; border-radius:22px; background:white; }
+      .shop-products { margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); }
+      .shop-products-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:.8rem; }
+      .shop-products .product-image { height:150px; }
+      .shop-products .product-body { padding:.8rem; }
+      .shop-products .product-body h4 { font-size:.95rem; }
+      .shop-products .price strong { font-size:1.1rem; }
+      .shop-products .card-actions { flex-wrap:wrap; }
+      .shop-products-status { margin:0 0 .7rem; color:var(--muted); font-size:.85rem; }
+      .shop-products-empty { padding:1rem; border-radius:12px; background:#f7faff; color:var(--muted); }
+      .shop-head { display:flex; gap:0.9rem; align-items:center; }
+      .shop-logo { width: 3rem; height:3rem; display:grid; place-items:center; border-radius:1rem; background:#eaf1ff; color:#0b5ad5; font-weight:800; }
+      .shop-head h4 { margin:0; }
+      .shop-head p, .shop-meta { margin:.2rem 0 0; font-size:.82rem; color:#586f8f; }
+      .verified-row { display:flex; flex-wrap:wrap; gap:0.8rem; }
+      .verified-badge { padding:0.8rem 1rem; border-radius:999px; background:#eaf7ef; color:#0d7345; border:1px solid #d7f0df; font-weight:700; }
+      .made-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:1rem; }
+      .made-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.5rem; min-height:160px; border-radius:22px; background:white; border:1px solid #e2edf8; text-align:center; padding:1rem; }
+      .made-item span { font-size:2rem; }
+      .business { display:flex; justify-content:space-between; align-items:center; gap:1rem; background:linear-gradient(135deg,#163a7a,#0d4fbc); color:white; border:none; border-radius:30px; padding:1.5rem; }
+      .business h3 { color:white; margin:0 0 .5rem; }
+      .business p { margin:0; color: rgba(255,255,255,0.82); }
+      .faq-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:1rem; }
+      .faq-item { padding:1rem; border-radius:18px; background:#f3f8ff; border:1px solid #deebff; font-weight:700; }
+      .footer { background:#0d1d34; color:#edf3ff; padding:2rem 0; margin-top:2rem; }
+      .footer-grid { display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:1rem; }
+      .footer-grid h3 { margin-top:0; margin-bottom:0.8rem; color:white; }
+      .footer-grid ul { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0.5rem; color:#d0dffb; }
+      .footer-contact { display:grid; gap:.55rem; margin-top:.8rem; }
+      .footer-contact a { color:#d0dffb; }
+      .footer-newsletter { display:grid; grid-template-columns:1fr minmax(300px,.9fr); gap:1.5rem; align-items:center; margin-bottom:2rem; padding:1.5rem; border:1px solid rgba(208,223,251,.2); border-radius:22px; background:rgba(255,255,255,.06); }
+      .footer-newsletter h2 { margin:0 0 .45rem; color:white; font-size:1.45rem; }
+      .footer-newsletter p { margin:.35rem 0; color:#d0dffb; font-size:.88rem; line-height:1.55; }
+      .newsletter-form { display:grid; grid-template-columns:1fr auto; gap:.65rem; }
+      .newsletter-form input[type="email"] { min-width:0; padding:.8rem .9rem; border:1px solid #7185a2; border-radius:12px; background:white; color:var(--text); font:inherit; }
+      .newsletter-form button[type="submit"] { border:0; border-radius:12px; background:#31bd81; color:#082d20; padding:.8rem 1rem; font:inherit; font-weight:800; cursor:pointer; }
+      .newsletter-form button:disabled { opacity:.6; cursor:wait; }
+      .newsletter-consent { display:flex; align-items:flex-start; gap:.55rem; grid-column:1/-1; color:#d0dffb; font-size:.78rem; line-height:1.45; }
+      .newsletter-consent input { width:1rem; height:1rem; flex:none; margin:.1rem 0 0; accent-color:#31bd81; }
+      .newsletter-consent a { color:white; text-decoration:underline; }
+      .newsletter-status { min-height:1.25rem; margin:.15rem 0 0; color:#baf1d6; font-size:.82rem; }
+      .newsletter-status[data-state="error"] { color:#ffc9c4; }
+      .newsletter-unsubscribe { grid-column:1/-1; justify-self:end; padding:0; border:0; background:transparent; color:#d0dffb; cursor:pointer; font:inherit; font-size:.76rem; text-decoration:underline; }
+      .newsletter-unsubscribe:hover { color:white; }
+      @media (max-width: 1000px) {
+        html { scroll-padding-top: 1rem; }
+        .topbar { position:relative; }
+        .topbar-inner { grid-template-columns:1fr; grid-template-areas:"brand" "search" "nav" "actions"; }
+        .nav, .actions { justify-content:flex-start; }
+        .hero, .category-grid, .product-grid, .shop-grid, .faq-grid, .made-grid, .footer-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .hero { display:grid; }
+      }
+      @media (max-width: 640px) {
+        .category-grid, .product-grid, .shop-grid, .faq-grid, .made-grid, .footer-grid { grid-template-columns:1fr; }
+        .info-section-grid, .image-slot-grid { grid-template-columns:1fr; }
+        .footer-newsletter { grid-template-columns:1fr; }
+        .search, .hero-actions, .business, .section-header { flex-direction:column; align-items:stretch; }
+        .actions { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); align-items:stretch; }
+        .actions-status, .auth-status, .auth-greeting { grid-column:1/-1; }
+        .hero { grid-template-columns:1fr; }
+      }
+    </style>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const apiFetch = (path, options = {}) => fetch(path, {
+          ...options,
+          credentials: 'include',
+        });
+        const apiErrorMessage = (error, fallback) =>
+          error instanceof TypeError
+            ? 'Serveur indisponible. Vérifiez que LOME MARKETPLACE fonctionne sur http://127.0.0.1:8080.'
+            : error.message || fallback;
+        const newsletterForm = document.querySelector('#newsletter-form');
+        const newsletterStatus = document.querySelector('#newsletter-status');
+        const newsletterEmail = document.querySelector('#newsletter-email');
+        const newsletterConsent = document.querySelector('#newsletter-consent');
+        const newsletterSubscribe = newsletterForm.querySelector('button[type="submit"]');
+        const newsletterUnsubscribe = document.querySelector('#newsletter-unsubscribe');
+
+        async function updateNewsletter(action) {
+          newsletterStatus.textContent = '';
+          newsletterStatus.dataset.state = '';
+          newsletterSubscribe.disabled = true;
+          newsletterUnsubscribe.disabled = true;
+          try {
+            const response = await fetch('/api/newsletter/subscribe', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: newsletterEmail.value,
+                action,
+                consent: action === 'subscribe' && newsletterConsent.checked,
+              }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'La demande newsletter a échoué.');
+            newsletterStatus.textContent = result.message;
+            if (action === 'subscribe') newsletterConsent.checked = false;
+          } catch (error) {
+            newsletterStatus.textContent = apiErrorMessage(error, 'Impossible de mettre à jour votre inscription.');
+            newsletterStatus.dataset.state = 'error';
+          } finally {
+            newsletterSubscribe.disabled = false;
+            newsletterUnsubscribe.disabled = false;
+          }
+        }
+
+        newsletterForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          if (!newsletterForm.reportValidity()) return;
+          updateNewsletter('subscribe');
+        });
+        newsletterUnsubscribe.addEventListener('click', () => {
+          if (!newsletterEmail.reportValidity()) return;
+          updateNewsletter('unsubscribe');
+        });
+        const topbar = document.querySelector('.topbar');
+        const setTopbarHeight = () =>
+          document.documentElement.style.setProperty('--topbar-height', `${topbar.offsetHeight}px`);
+        setTopbarHeight();
+        window.addEventListener('resize', setTopbarHeight);
+
+        const navLinks = [...document.querySelectorAll('.nav a')];
+        const sections = {
+          Accueil: document.querySelector('#home'),
+          Produits: document.querySelector('#popular'),
+          Boutiques: document.querySelector('#stores'),
+          Devis: document.querySelector('#business'),
+          Vendeur: document.querySelector('#verified-vendors'),
+        };
+
+        navLinks.forEach((link) => {
+          link.addEventListener('click', (event) => {
+            event.preventDefault();
+            navLinks.forEach((item) => item.classList.toggle('active', item === link));
+            const target = link.textContent.trim();
+            const targetSection = sections[target];
+            if (targetSection) {
+              targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
+        });
+
+        const searchInput = document.querySelector('.search input');
+        searchInput.value = new URLSearchParams(window.location.search).get('search') || '';
+        const searchButton = document.querySelector('.search .btn');
+        const searchStatus = document.querySelector('#search-status');
+        const popularGrid = document.querySelector('#popular-products');
+        const dealsGrid = document.querySelector('#deal-products');
+        const productSection = document.querySelector('#popular');
+        const allProducts = new Map();
+        const cart = new Map();
+        const favorites = new Set();
+        const compared = new Set();
+        let searchTimer;
+        let searchRequestId = 0;
+
+        const formatPrice = (value) =>
+          `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value)} FCFA`;
+        const categoryImages = {
+          'Électronique': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=240&q=80',
+          'Téléphones': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=240&q=80',
+          'Informatique': 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=240&q=80',
+          'Mode': 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=240&q=80',
+          'Maison': 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=240&q=80',
+          'Agriculture': 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=240&q=80',
+        };
+        const storeImages = [
+          'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=700&q=80',
+          'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=700&q=80',
+          'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=700&q=80',
+          'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=700&q=80',
+        ];
+
+        function createProductCard(product) {
+          const card = document.createElement('article');
+          card.className = 'product-card';
+          card.dataset.productId = String(product.id);
+
+          const imageWrapper = document.createElement('div');
+          imageWrapper.className = 'product-image';
+          const image = document.createElement('img');
+          image.src = product.image;
+          image.alt = product.name;
+          image.loading = 'lazy';
+          imageWrapper.append(image);
+
+          if (product.oldPrice > product.price) {
+            const discount = document.createElement('span');
+            discount.className = 'discount';
+            discount.textContent = `-${Math.round((1 - product.price / product.oldPrice) * 100)}%`;
+            imageWrapper.append(discount);
+          }
+
+          const favorite = document.createElement('button');
+          favorite.className = 'favorite';
+          favorite.type = 'button';
+          favorite.dataset.action = 'favorite';
+          favorite.setAttribute('aria-label', `Ajouter ${product.name} aux favoris`);
+          favorite.setAttribute('aria-pressed', String(favorites.has(String(product.id))));
+          favorite.textContent = favorites.has(String(product.id)) ? '♥' : '♡';
+          imageWrapper.append(favorite);
+
+          const body = document.createElement('div');
+          body.className = 'product-body';
+          const topLine = document.createElement('div');
+          topLine.className = 'topline';
+          const vendor = document.createElement('span');
+          vendor.textContent = product.vendor;
+          topLine.append(vendor);
+          if (product.verified) {
+            const badge = document.createElement('span');
+            badge.className = 'verified';
+            badge.textContent = 'Vérifié';
+            topLine.append(badge);
+          }
+
+          const title = document.createElement('h4');
+          title.textContent = product.name;
+          const rating = document.createElement('div');
+          rating.className = 'stars';
+          rating.textContent = `⭐ ${product.rating} • ${product.reviews} avis`;
+          const price = document.createElement('div');
+          price.className = 'price';
+          const currentPrice = document.createElement('strong');
+          currentPrice.textContent = formatPrice(product.price);
+          price.append(currentPrice);
+          if (product.oldPrice > product.price) {
+            const oldPrice = document.createElement('span');
+            oldPrice.className = 'old';
+            oldPrice.textContent = formatPrice(product.oldPrice);
+            price.append(oldPrice);
+          }
+
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const location = document.createElement('span');
+          location.textContent = product.location;
+          const stock = document.createElement('span');
+          stock.textContent = product.inStock ? 'En stock' : 'Rupture';
+          meta.append(location, stock);
+
+          const actions = document.createElement('div');
+          actions.className = 'card-actions';
+          const addToCart = document.createElement('button');
+          addToCart.className = 'btn primary small';
+          addToCart.type = 'button';
+          addToCart.dataset.action = 'cart';
+          addToCart.textContent = 'Ajouter au panier';
+          addToCart.disabled = !product.inStock;
+          const compare = document.createElement('button');
+          compare.className = 'btn ghost small';
+          compare.type = 'button';
+          compare.dataset.action = 'compare';
+          compare.textContent = compared.has(String(product.id)) ? 'Retirer du comparateur' : 'Comparer';
+          actions.append(addToCart, compare);
+          body.append(topLine, title, rating, price, meta, actions);
+          card.append(imageWrapper, body);
+          return card;
+        }
+
+        function renderProducts(filteredProducts) {
+          const isSearching = Boolean(searchInput.value.trim());
+          document.querySelector('#deals').classList.toggle('hidden', isSearching);
+          document.querySelector('#popular-title').textContent = isSearching
+            ? 'Résultats de recherche'
+            : 'Produits populaires';
+          document.querySelector('#popular-subtitle').textContent = isSearching
+            ? `${filteredProducts.length} produit${filteredProducts.length === 1 ? '' : 's'} correspondant à votre recherche`
+            : 'Catalogue de démonstration fourni par l’API';
+          popularGrid.replaceChildren(...(isSearching ? filteredProducts : filteredProducts.slice(0, 4)).map(createProductCard));
+          dealsGrid.replaceChildren(...(isSearching ? [] : filteredProducts.slice(4)).map(createProductCard));
+        }
+
+        function renderCategories(categories) {
+          const grid = document.querySelector('#category-list');
+          grid.replaceChildren(...categories.map((category) => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'category-card';
+            card.setAttribute('aria-label', `Rechercher ${category.name}, ${category.count} produit${category.count === 1 ? '' : 's'}`);
+            const image = document.createElement('img');
+            image.className = 'category-image';
+            image.src = category.image || categoryImages[category.name] || '';
+            image.alt = '';
+            image.loading = 'lazy';
+            const content = document.createElement('span');
+            const name = document.createElement('strong');
+            name.textContent = category.name;
+            const count = document.createElement('span');
+            count.className = 'category-count';
+            count.textContent = `${category.count} produit${category.count === 1 ? '' : 's'}`;
+            content.append(name, count);
+            card.append(image, content);
+            card.addEventListener('click', () => {
+              searchInput.value = category.name;
+              applySearch(true);
+            });
+            return card;
+          }));
+        }
+
+        function renderStores(stores) {
+          const grid = document.querySelector('#store-list');
+          grid.replaceChildren(...stores.map((store, index) => {
+            const card = document.createElement('article');
+            card.className = 'shop-card';
+            const cover = document.createElement('img');
+            cover.className = 'shop-cover';
+            cover.src = store.image || storeImages[index % storeImages.length];
+            cover.alt = `Aperçu de la boutique ${store.name}`;
+            cover.loading = 'lazy';
+            const head = document.createElement('div');
+            head.className = 'shop-head';
+            const logo = document.createElement('div');
+            logo.className = 'shop-logo';
+            logo.textContent = store.logo;
+            const details = document.createElement('div');
+            const name = document.createElement('h4');
+            name.textContent = store.name;
+            const sector = document.createElement('p');
+            sector.textContent = store.sector;
+            details.append(name, sector);
+            head.append(logo, details);
+            const metadata = document.createElement('div');
+            metadata.className = 'shop-meta';
+            metadata.textContent = `📍 ${store.location} • ${store.products} produit${store.products === 1 ? '' : 's'} de démonstration`;
+            const rating = document.createElement('div');
+            rating.className = 'stars';
+            rating.style.marginTop = '.6rem';
+            rating.append(document.createTextNode(`⭐ ${store.rating} `));
+            if (store.verified) {
+              const badge = document.createElement('span');
+              badge.className = 'verified';
+              badge.textContent = '✓ Vérifié';
+              rating.append(badge);
+            }
+            const button = document.createElement('button');
+            button.className = 'btn ghost';
+            button.type = 'button';
+            button.style.cssText = 'width:100%; margin-top:1rem;';
+            button.dataset.store = store.name;
+            button.setAttribute('aria-expanded', 'false');
+            button.textContent = 'Voir les produits';
+            const productsSection = document.createElement('section');
+            productsSection.className = 'shop-products hidden';
+            productsSection.setAttribute('aria-label', `Articles de ${store.name}`);
+            const status = document.createElement('p');
+            status.className = 'shop-products-status';
+            status.setAttribute('role', 'status');
+            status.setAttribute('aria-live', 'polite');
+            const productGrid = document.createElement('div');
+            productGrid.className = 'shop-products-grid';
+            productsSection.append(status, productGrid);
+            card.append(cover, head, metadata, rating, button, productsSection);
+            return card;
+          }));
+        }
+
+        async function toggleStoreProducts(button) {
+          const storeName = button.dataset.store;
+          const card = button.closest('.shop-card');
+          const section = card.querySelector('.shop-products');
+          const status = section.querySelector('.shop-products-status');
+          const productGrid = section.querySelector('.shop-products-grid');
+          const isRetrying = button.dataset.retry === 'true';
+          const isOpening = section.classList.contains('hidden');
+          if (!isOpening && !isRetrying) {
+            section.classList.add('hidden');
+            button.setAttribute('aria-expanded', 'false');
+            button.textContent = 'Voir les produits';
+            return;
+          }
+          section.classList.remove('hidden');
+          button.setAttribute('aria-expanded', 'true');
+          button.textContent = 'Masquer les produits';
+          if (section.dataset.loaded === 'true') return;
+
+          delete button.dataset.retry;
+          button.disabled = true;
+          status.textContent = 'Chargement des produits…';
+          try {
+            const response = await apiFetch(`/api/products?search=${encodeURIComponent(storeName)}`);
+            const products = await response.json();
+            if (!response.ok) throw new Error(products.error || 'Impossible de charger les produits de cette boutique.');
+            const storeProducts = products.filter((product) => product.vendor === storeName);
+            storeProducts.forEach((product) => allProducts.set(String(product.id), product));
+            if (!storeProducts.length) {
+              status.textContent = '';
+              const empty = document.createElement('p');
+              empty.className = 'shop-products-empty';
+              empty.textContent = 'Aucun article disponible dans cette boutique pour le moment.';
+              productGrid.replaceChildren(empty);
+            } else {
+              status.textContent = `${storeProducts.length} article${storeProducts.length === 1 ? '' : 's'} dans cette boutique`;
+              productGrid.replaceChildren(...storeProducts.map(createProductCard));
+            }
+            section.dataset.loaded = 'true';
+          } catch (error) {
+            status.textContent = apiErrorMessage(error, 'Le chargement des articles a échoué.');
+            button.dataset.retry = 'true';
+            button.textContent = 'Réessayer le chargement';
+          } finally {
+            button.disabled = false;
+          }
+        }
+
+        function renderVerifiedVendors(vendors) {
+          const row = document.querySelector('#vendor-list');
+          row.replaceChildren(...vendors.map((vendor) => {
+            const badge = document.createElement('span');
+            badge.className = 'verified-badge';
+            badge.textContent = `✓ ${vendor}`;
+            return badge;
+          }));
+        }
+
+        const faqAnswers = {
+          'Comment acheter ?': 'Recherchez un article, vérifiez son prix et sa disponibilité, puis ajoutez-le au panier. Contactez le vendeur pour finaliser la commande.',
+          'Comment devenir vendeur ?': 'Créez un compte avec le bouton « Devenir vendeur ». La création complète de boutique sera ajoutée dans une prochaine étape.',
+          'Comment créer une boutique ?': 'La création de boutique n’est pas encore persistée dans cette version de démonstration.',
+          'Comment demander un devis ?': 'Le formulaire de demande de devis sera connecté dans une prochaine étape.',
+          'Comment payer ?': 'Le paiement en ligne n’est pas activé. Ne transmettez pas de coordonnées bancaires sur ce prototype.',
+          'Comment suivre ma commande ?': 'Le suivi de commande n’est pas encore disponible dans cette version de démonstration.',
+          'Comment contacter un vendeur ?': 'Les coordonnées et la messagerie vendeur ne sont pas encore intégrées au prototype.',
+          'Comment signaler un problème ?': 'Le traitement des litiges n’est pas encore connecté. Cette démonstration ne permet pas de déposer une réclamation.',
+        };
+
+        function renderFaq(questions) {
+          const grid = document.querySelector('#faq-list');
+          grid.replaceChildren(...questions.map((question) => {
+            const item = document.createElement('details');
+            item.className = 'faq-item';
+            const summary = document.createElement('summary');
+            summary.textContent = question;
+            const answer = document.createElement('p');
+            answer.textContent = faqAnswers[question] || 'Cette information sera bientôt disponible.';
+            item.append(summary, answer);
+            return item;
+          }));
+        }
+
+        async function applySearch(shouldScroll = false) {
+          const query = searchInput.value.trim();
+          const requestId = ++searchRequestId;
+          searchStatus.textContent = 'Recherche en cours…';
+          try {
+            const response = await apiFetch(`/api/products?search=${encodeURIComponent(query)}`);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'La recherche a échoué.');
+            if (requestId !== searchRequestId) return;
+
+            result.forEach((product) => allProducts.set(String(product.id), product));
+            renderProducts(result);
+
+            searchStatus.textContent = query
+              ? `${result.length} produit${result.length === 1 ? '' : 's'} trouvé${result.length === 1 ? '' : 's'}.`
+              : '';
+            if (shouldScroll && productSection) {
+              productSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          } catch (error) {
+            if (requestId !== searchRequestId) return;
+            searchStatus.textContent = apiErrorMessage(error, 'Le serveur de recherche est indisponible.');
+          }
+        }
+
+        Promise.all([
+          apiFetch('/api/categories').then(async (response) => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Le chargement des catégories a échoué.');
+            renderCategories(result);
+          }),
+          apiFetch('/api/stores').then(async (response) => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Le chargement des boutiques a échoué.');
+            renderStores(result);
+          }),
+          apiFetch('/api/vendors').then(async (response) => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Le chargement des vendeurs a échoué.');
+            renderVerifiedVendors(result);
+          }),
+          apiFetch('/api/faq').then(async (response) => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Le chargement de la FAQ a échoué.');
+            renderFaq(result);
+          }),
+        ]).catch((error) => {
+          document.querySelector('#catalog-status').textContent =
+            error.message || 'Impossible de charger les données du catalogue.';
+        });
+
+        searchButton.addEventListener('click', () => applySearch(true));
+        searchInput.addEventListener('input', () => {
+          clearTimeout(searchTimer);
+          searchTimer = setTimeout(() => applySearch(), 250);
+        });
+        searchInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            clearTimeout(searchTimer);
+            applySearch(true);
+          }
+        });
+        applySearch();
+
+        const productById = (id) => allProducts.get(id);
+        const actionStatus = document.querySelector('#actions-status');
+        const cartDialog = document.querySelector('#cart-dialog');
+        const compareDialog = document.querySelector('#compare-dialog');
+        const cartList = document.querySelector('#cart-list');
+        const compareList = document.querySelector('#compare-list');
+        const cartButton = document.querySelector('#cart-button');
+        function renderCart() {
+          const entries = [...cart.entries()];
+          cartList.replaceChildren();
+          if (!entries.length) {
+            const empty = document.createElement('li');
+            empty.textContent = 'Votre panier est vide.';
+            cartList.append(empty);
+          } else {
+            entries.forEach(([id, quantity]) => {
+              const product = productById(id);
+              if (!product) return;
+              const row = document.createElement('li');
+              const description = document.createElement('span');
+              description.textContent = `${product.name} × ${quantity}`;
+              const price = document.createElement('strong');
+              price.textContent = formatPrice(product.price * quantity);
+              row.append(description, price);
+              cartList.append(row);
+            });
+          }
+          const count = entries.reduce((total, [, quantity]) => total + quantity, 0);
+          cartButton.textContent = `🛒 ${count}`;
+          cartButton.setAttribute('aria-label', `Panier, ${count} article${count === 1 ? '' : 's'}`);
+        }
+
+        function renderComparison() {
+          compareList.replaceChildren();
+          [...compared].forEach((id) => {
+            const product = productById(id);
+            if (!product) return;
+            const row = document.createElement('li');
+            const name = document.createElement('span');
+            name.textContent = product.name;
+            const price = document.createElement('strong');
+            price.textContent = formatPrice(product.price);
+            row.append(name, price);
+            compareList.append(row);
+          });
+        }
+
+        document.addEventListener('click', (event) => {
+          const actionButton = event.target.closest('[data-action]');
+          if (actionButton) {
+            const card = actionButton.closest('.product-card');
+            const id = card?.dataset.productId;
+            const product = productById(id);
+            if (!product) return;
+
+            if (actionButton.dataset.action === 'cart') {
+              cart.set(id, (cart.get(id) || 0) + 1);
+              renderCart();
+              actionStatus.textContent = `${product.name} ajouté au panier.`;
+            } else if (actionButton.dataset.action === 'favorite') {
+              const isFavorite = favorites.has(id);
+              if (isFavorite) favorites.delete(id);
+              else favorites.add(id);
+              actionButton.setAttribute('aria-pressed', String(!isFavorite));
+              actionButton.textContent = isFavorite ? '♡' : '♥';
+              actionStatus.textContent = isFavorite
+                ? `${product.name} retiré des favoris.`
+                : `${product.name} ajouté aux favoris.`;
+            } else if (actionButton.dataset.action === 'compare') {
+              if (compared.has(id)) {
+                compared.delete(id);
+                actionStatus.textContent = `${product.name} retiré du comparateur.`;
+              } else if (compared.size >= 3) {
+                actionStatus.textContent = 'Comparez au maximum 3 produits à la fois.';
+                return;
+              } else {
+                compared.add(id);
+                actionStatus.textContent = `${product.name} ajouté au comparateur.`;
+              }
+              actionButton.textContent = compared.has(id) ? 'Retirer du comparateur' : 'Comparer';
+              renderComparison();
+              if (compared.size > 0) compareDialog.showModal();
+            }
+            return;
+          }
+
+          if (event.target.closest('[data-store]')) {
+            toggleStoreProducts(event.target.closest('[data-store]'));
+          }
+        });
+
+        document.querySelector('#hero-search').addEventListener('click', () => {
+          searchInput.focus();
+          searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        document.querySelectorAll('[data-vendor-signup]').forEach((button) => {
+          button.addEventListener('click', () => openAuthDialog('register', 'vendor'));
+        });
+        cartButton.addEventListener('click', () => {
+          renderCart();
+          cartDialog.showModal();
+        });
+        document.querySelectorAll('[data-close-dialog]').forEach((button) => {
+          button.addEventListener('click', () => button.closest('dialog').close());
+        });
+        document.querySelector('#clear-comparison').addEventListener('click', () => {
+          compared.clear();
+          renderComparison();
+          actionStatus.textContent = 'Le comparateur a été vidé.';
+          compareDialog.close();
+        });
+        const authDialog = document.querySelector('#auth-dialog');
+        const authForm = document.querySelector('#auth-form');
+        const authTitle = document.querySelector('#auth-title');
+        const authNameField = document.querySelector('#auth-name-field');
+        const authNameInput = document.querySelector('#auth-name');
+        const authEmailInput = document.querySelector('#auth-email');
+        const authPasswordField = document.querySelector('#auth-password-field');
+        const authPasswordLabel = document.querySelector('#auth-password-label');
+        const authPasswordInput = document.querySelector('#auth-password');
+        const authResetTokenField = document.querySelector('#auth-reset-token-field');
+        const authResetTokenInput = document.querySelector('#auth-reset-token');
+        const authResetInfo = document.querySelector('#auth-reset-info');
+        const authMessage = document.querySelector('#auth-message');
+        const authNotice = document.querySelector('#auth-notice');
+        const authSubmit = document.querySelector('#auth-submit');
+        const authSwitch = document.querySelector('#auth-switch');
+        const authForgot = document.querySelector('#auth-forgot');
+        const loginButton = document.querySelector('#login-button');
+        const registerButton = document.querySelector('#register-button');
+        const greeting = document.querySelector('#auth-greeting');
+        const logoutButton = document.querySelector('#logout-button');
+        const authStatus = document.querySelector('#auth-status');
+        let authMode = 'login';
+        let authAccountType = 'buyer';
+
+        function setAuthenticatedUser(user) {
+          loginButton.classList.toggle('hidden', Boolean(user));
+          registerButton.classList.toggle('hidden', Boolean(user));
+          greeting.classList.toggle('hidden', !user);
+          logoutButton.classList.toggle('hidden', !user);
+          greeting.textContent = user
+            ? `Bonjour, ${user.name} · ${user.role === 'vendor' ? 'Vendeur' : 'Acheteur'}`
+            : '';
+        }
+
+        function openAuthDialog(mode, accountType = 'buyer') {
+          authMode = mode;
+          authAccountType = mode === 'register' ? accountType : 'buyer';
+          authForm.reset();
+          updateAuthDialog();
+          authMessage.textContent = '';
+          authNotice.textContent = '';
+          authDialog.showModal();
+          (mode === 'register' ? authNameInput : authEmailInput).focus();
+        }
+
+        function updateAuthDialog() {
+          const isRegistering = authMode === 'register';
+          const isForgotting = authMode === 'forgot';
+          const isResetting = authMode === 'reset';
+          const needsPassword = !isForgotting;
+          authTitle.textContent = isRegistering
+            ? (authAccountType === 'vendor' ? 'Créer un compte vendeur' : 'Créer un compte')
+            : isForgotting
+              ? 'Mot de passe oublié'
+              : isResetting
+                ? 'Choisir un nouveau mot de passe'
+                : 'Connexion';
+          authNameField.hidden = !isRegistering;
+          authNameInput.disabled = !isRegistering;
+          authNameInput.required = isRegistering;
+          authPasswordField.hidden = !needsPassword;
+          authPasswordInput.disabled = !needsPassword;
+          authPasswordInput.required = needsPassword;
+          authPasswordInput.minLength = isRegistering || isResetting ? 8 : 0;
+          authPasswordInput.maxLength = 128;
+          authPasswordLabel.textContent = isResetting ? 'Nouveau mot de passe' : 'Mot de passe';
+          if (isRegistering || isResetting) {
+            authPasswordInput.pattern = '(?=.*[a-zA-Z])(?=.*[0-9]).{8,128}';
+          } else {
+            authPasswordInput.removeAttribute('pattern');
+          }
+          authPasswordInput.title = isRegistering || isResetting
+            ? 'Utilisez entre 8 et 128 caractères, avec au moins une lettre et un chiffre.'
+            : '';
+          authPasswordInput.autocomplete = isRegistering || isResetting ? 'new-password' : 'current-password';
+          authResetTokenField.hidden = !isResetting;
+          authResetTokenInput.disabled = !isResetting;
+          authResetTokenInput.required = isResetting;
+          authForgot.hidden = authMode !== 'login';
+          authSwitch.hidden = isForgotting || isResetting;
+          authSwitch.textContent = isRegistering
+            ? 'Déjà un compte ? Connectez-vous'
+            : 'Pas encore de compte ? Inscrivez-vous';
+          authSubmit.textContent = isRegistering
+            ? 'Créer mon compte'
+            : isForgotting
+              ? 'Envoyer le code'
+              : isResetting
+                ? 'Réinitialiser le mot de passe'
+                : 'Se connecter';
+          authResetInfo.hidden = true;
+          authResetInfo.textContent = '';
+          authNotice.textContent = '';
+        }
+
+        loginButton.addEventListener('click', () => openAuthDialog('login'));
+        registerButton.addEventListener('click', () => openAuthDialog('register'));
+        authForgot.addEventListener('click', () => {
+          authMode = 'forgot';
+          authAccountType = 'buyer';
+          updateAuthDialog();
+          authMessage.textContent = '';
+          authEmailInput.focus();
+          authResetTokenInput.value = '';
+        });
+        document.querySelector('#auth-close').addEventListener('click', () => authDialog.close());
+        authSwitch.addEventListener('click', () => openAuthDialog(authMode === 'register' ? 'login' : 'register'));
+        authDialog.addEventListener('click', (event) => {
+          if (event.target === authDialog) authDialog.close();
+        });
+
+        authForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          if (!authForm.reportValidity()) return;
+          authSubmit.disabled = true;
+          authSubmit.textContent = 'Veuillez patienter…';
+          authMessage.textContent = '';
+          authNotice.textContent = '';
+          const submittedMode = authMode;
+          const payload = {
+            email: authEmailInput.value,
+          };
+          if (submittedMode === 'register') {
+            payload.name = authNameInput.value;
+            payload.accountType = authAccountType;
+            payload.password = authPasswordInput.value;
+          } else if (submittedMode === 'login') {
+            payload.password = authPasswordInput.value;
+          } else if (submittedMode === 'reset') {
+            payload.token = authResetTokenInput.value;
+            payload.password = authPasswordInput.value;
+          }
+          try {
+            const endpoints = {
+              login: 'login',
+              register: 'register',
+              forgot: 'forgot-password',
+              reset: 'reset-password',
+            };
+            const response = await apiFetch(`/api/auth/${endpoints[submittedMode]}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'La demande a échoué.');
+            if (submittedMode === 'forgot') {
+              authNotice.textContent = result.message;
+              if (result.resetToken) {
+                authMode = 'reset';
+                updateAuthDialog();
+                authResetTokenInput.value = result.resetToken;
+                authResetInfo.textContent = 'Code de prototype local (aucun e-mail envoyé). Copiez-le et conservez-le jusqu’à la réinitialisation.';
+                authResetInfo.hidden = false;
+                authNotice.textContent = 'Code prêt à être utilisé.';
+                authPasswordInput.focus();
+              }
+              return;
+            }
+            if (submittedMode === 'reset') {
+              authMode = 'login';
+              updateAuthDialog();
+              authEmailInput.value = payload.email;
+              authPasswordInput.value = '';
+              authResetTokenInput.value = '';
+              authNotice.textContent = result.message;
+              authPasswordInput.focus();
+              return;
+            }
+            setAuthenticatedUser(result.user);
+            authStatus.textContent = '';
+            authDialog.close();
+            authForm.reset();
+          } catch (error) {
+            authMessage.textContent = apiErrorMessage(error, 'Impossible de joindre le serveur.');
+          } finally {
+            authSubmit.disabled = false;
+            if (!authDialog.open) return;
+            authSubmit.textContent = authMode === 'register'
+              ? 'Créer mon compte'
+              : authMode === 'forgot'
+                ? 'Envoyer le code'
+                : authMode === 'reset'
+                  ? 'Réinitialiser le mot de passe'
+                  : 'Se connecter';
+          }
+        });
+
+        logoutButton.addEventListener('click', async () => {
+          logoutButton.disabled = true;
+          try {
+            const response = await apiFetch('/api/auth/logout', { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'La déconnexion a échoué.');
+            setAuthenticatedUser(null);
+            authStatus.textContent = '';
+          } catch (error) {
+            authStatus.textContent = apiErrorMessage(error, 'Impossible de joindre le serveur.');
+          } finally {
+            logoutButton.disabled = false;
+          }
+        });
+
+        apiFetch('/api/auth/me')
+          .then(async (response) => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'La vérification de session a échoué.');
+            setAuthenticatedUser(result.user);
+          })
+          .catch((error) => {
+            authStatus.textContent = apiErrorMessage(error, 'Le serveur d’authentification est indisponible.');
+          });
+
+        if (window.location.pathname.startsWith('/admin')) {
+          document.querySelector('.topbar').classList.add('hidden');
+          document.querySelector('#marketplace-main').classList.add('hidden');
+          document.querySelector('.footer').classList.add('hidden');
+          document.querySelector('#admin-main').classList.remove('hidden');
+
+          const authView = document.querySelector('#admin-auth-view');
+          const dashboardView = document.querySelector('#admin-dashboard-view');
+          const loginForm = document.querySelector('#admin-login-form');
+          const setupForm = document.querySelector('#admin-setup-form');
+          const adminMessage = document.querySelector('#admin-auth-message');
+          const adminTitle = document.querySelector('#admin-auth-title');
+          const adminDescription = document.querySelector('#admin-auth-description');
+          const formatAdminPrice = (value) =>
+            `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value)} FCFA`;
+
+          function addTableCell(row, value) {
+            const cell = document.createElement('td');
+            cell.textContent = String(value);
+            row.append(cell);
+          }
+
+          async function showAdminDashboard(user) {
+            const response = await apiFetch('/api/admin/dashboard');
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Impossible de charger le tableau de bord.');
+
+            authView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            document.querySelector('#admin-welcome').textContent = `Connecté en tant que ${user.name} (${user.email})`;
+            const statLabels = [
+              ['Produits', result.stats.products],
+              ['Boutiques', result.stats.stores],
+              ['Vendeurs', result.stats.vendors],
+              ['Comptes clients', result.stats.accounts],
+            ];
+            const stats = document.querySelector('#admin-stats');
+            stats.replaceChildren(...statLabels.map(([label, value]) => {
+              const card = document.createElement('div');
+              card.className = 'admin-stat';
+              const number = document.createElement('strong');
+              number.textContent = String(value);
+              const caption = document.createElement('span');
+              caption.textContent = label;
+              card.append(number, caption);
+              return card;
+            }));
+
+            const usersBody = document.querySelector('#admin-users');
+            usersBody.replaceChildren(...result.users.map((userEntry) => {
+              const row = document.createElement('tr');
+              addTableCell(row, userEntry.name);
+              addTableCell(row, userEntry.email);
+              addTableCell(row, userEntry.role === 'vendor' ? 'Vendeur' : 'Acheteur');
+              return row;
+            }));
+            document.querySelector('#admin-users-empty').classList.toggle('hidden', result.users.length !== 0);
+            const productsBody = document.querySelector('#admin-products');
+            productsBody.replaceChildren(...result.products.map((product) => {
+              const row = document.createElement('tr');
+              addTableCell(row, product.name);
+              addTableCell(row, product.vendor);
+              addTableCell(row, formatAdminPrice(product.price));
+              addTableCell(row, product.inStock ? 'En stock' : 'Rupture');
+              return row;
+            }));
+            const payments = result.payments;
+            const formatAmount = (amount) =>
+              `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount)} FCFA`;
+            const paymentMetrics = [
+              ['Ventes confirmées', formatAmount(payments.grossRevenue)],
+              ['Recettes plateforme · 3,5 %', formatAmount(payments.platformRevenue)],
+              ['À reverser aux vendeurs', formatAmount(payments.sellerPayouts)],
+              ['Profils de versement configurés', String(payments.vendorProfilesConfigured)],
+            ];
+            const paymentSummary = document.querySelector('#admin-payment-summary');
+            paymentSummary.replaceChildren(...paymentMetrics.map(([label, value]) => {
+              const card = document.createElement('div');
+              card.className = 'admin-payment-metric';
+              const total = document.createElement('strong');
+              total.textContent = value;
+              const caption = document.createElement('span');
+              caption.textContent = label;
+              card.append(total, caption);
+              return card;
+            }));
+            document.querySelector('#admin-payment-note').textContent = payments.checkoutAvailable
+              ? 'Commission de 3,5 % prélevée sur les paiements confirmés, sans supplément pour l’acheteur.'
+              : 'TMoney et Flooz sont prévus. Le prestataire marchand reste à configurer ; les paiements réels sont désactivés. La commission de 3,5 % sera prélevée sur la part vendeur.';
+            const paymentLedger = document.querySelector('#admin-payment-ledger');
+            paymentLedger.replaceChildren(...result.paymentLedger.map((payment) => {
+              const row = document.createElement('tr');
+              addTableCell(row, payment.id);
+              addTableCell(row, new Date(payment.paidAt).toLocaleString('fr-FR'));
+              addTableCell(row, payment.buyerEmail);
+              addTableCell(row, payment.method);
+              addTableCell(row, formatAmount(payment.grossAmount));
+              addTableCell(row, formatAmount(payment.commissionAmount));
+              addTableCell(row, formatAmount(payment.sellerPayout));
+              return row;
+            }));
+            document.querySelector('#admin-payments-empty').classList.toggle('hidden', result.paymentLedger.length !== 0);
+          }
+
+          async function initializeAdminPage() {
+            authView.classList.remove('hidden');
+            adminMessage.textContent = '';
+            try {
+              const sessionResponse = await apiFetch('/api/auth/me');
+              const sessionResult = await sessionResponse.json();
+              if (!sessionResponse.ok) throw new Error(sessionResult.error || 'Vérification de session impossible.');
+              if (sessionResult.user?.role === 'admin') {
+                await showAdminDashboard(sessionResult.user);
+                return;
+              }
+
+              const statusResponse = await apiFetch('/api/admin/status');
+              const status = await statusResponse.json();
+              if (!statusResponse.ok) throw new Error(status.error || 'Vérification du compte administrateur impossible.');
+              adminTitle.textContent = status.canSetup && !status.configured
+                ? 'Créer le premier compte administrateur'
+                : 'Connexion administrateur';
+              adminDescription.textContent = status.canSetup && !status.configured
+                ? 'Définissez les identifiants du premier administrateur. Le mot de passe sera stocké sous forme hachée.'
+                : 'Connectez-vous pour accéder au tableau de bord LOME MARKETPLACE.';
+              setupForm.classList.toggle('hidden', !status.canSetup || status.configured);
+              loginForm.classList.toggle('hidden', !status.configured);
+              if (!status.configured && !status.canSetup) {
+                adminMessage.textContent = 'Configurez ADMIN_EMAIL et ADMIN_PASSWORD dans le serveur pour activer l’accès administrateur.';
+              }
+            } catch (error) {
+              adminMessage.textContent = apiErrorMessage(error, 'Impossible d’ouvrir l’espace administrateur.');
+            }
+          }
+
+          async function submitAdminForm(event, endpoint, form, readPayload) {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            adminMessage.textContent = '';
+            try {
+              const response = await apiFetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(readPayload()),
+              });
+              const result = await response.json();
+              if (!response.ok) throw new Error(result.error || 'La connexion administrateur a échoué.');
+              if (!result.user || result.user.role !== 'admin') {
+                throw new Error('Le serveur n’a pas confirmé les droits administrateur.');
+              }
+              await showAdminDashboard(result.user);
+            } catch (error) {
+              adminMessage.textContent = apiErrorMessage(error, 'Impossible de joindre le serveur administrateur.');
+            } finally {
+              submitButton.disabled = false;
+            }
+          }
+
+          loginForm.addEventListener('submit', (event) => submitAdminForm(
+            event,
+            '/api/admin/login',
+            loginForm,
+            () => ({
+              email: document.querySelector('#admin-login-email').value,
+              password: document.querySelector('#admin-login-password').value,
+            }),
+          ));
+          setupForm.addEventListener('submit', (event) => submitAdminForm(
+            event,
+            '/api/admin/setup',
+            setupForm,
+            () => ({
+              name: document.querySelector('#admin-setup-name').value,
+              email: document.querySelector('#admin-setup-email').value,
+              password: document.querySelector('#admin-setup-password').value,
+            }),
+          ));
+          document.querySelector('#admin-logout').addEventListener('click', async () => {
+            try {
+              const response = await apiFetch('/api/auth/logout', { method: 'POST' });
+              if (!response.ok) throw new Error('La déconnexion a échoué. Réessayez.');
+              window.location.replace('/admin/login');
+            } catch (error) {
+              adminMessage.textContent = apiErrorMessage(error, 'La déconnexion a échoué. Réessayez.');
+            }
+          });
+
+          initializeAdminPage();
+        }
+
+        const informationPages = {
+          '/a-propos': {
+            title: 'Une place de marché pensée pour le Togo',
+            eyebrow: 'À PROPOS DE LOME',
+            intro: 'LOME MARKETPLACE réunit dans un même espace des acheteurs, des vendeurs et des produits d’ici. Découvrez le catalogue, comparez les offres et explorez les boutiques de démonstration.',
+            image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Acheter plus facilement', 'Parcourez les catégories, recherchez un produit et comparez les prix et les disponibilités dans le catalogue.'],
+              ['Donner de la visibilité aux vendeurs', 'Les boutiques et articles présentés illustrent les outils de mise en avant destinés aux entreprises et commerçants locaux.'],
+              ['Une version de démonstration', 'Les produits et boutiques affichés sont des exemples. Le paiement, les commandes et les transactions réelles ne sont pas activés sur ce prototype.'],
+            ],
+            actions: [['Explorer les produits', '/#popular'], ['Découvrir l’espace vendeur', '/centre-vendeur']],
+          },
+          '/contact': {
+            title: 'Contactez LOME MARKETPLACE',
+            eyebrow: 'NOUS JOINDRE',
+            intro: 'Une question sur le site ou besoin d’informations ? Vous pouvez joindre directement LOME MARKETPLACE par téléphone ou par e-mail.',
+            image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Téléphone', '+228 98 20 31 13'],
+              ['E-mail', 'faglagbodja67@gmail.com'],
+              ['Adresse', 'Lomé, Togo'],
+              ['Besoin d’aide ?', 'Le centre d’aide et la FAQ expliquent les fonctions disponibles et les limites de cette version de démonstration.'],
+            ],
+            actions: [['Appeler le +228 98 20 31 13', 'tel:+22898203113'], ['Envoyer un e-mail', 'mailto:faglagbodja67@gmail.com'], ['Ouvrir le centre d’aide', '/centre-aide']],
+          },
+          '/devenir-vendeur': {
+            title: 'Faites découvrir vos produits',
+            eyebrow: 'REJOINDRE LES VENDEURS',
+            intro: 'Créez un compte vendeur pour découvrir le parcours de vente de LOME MARKETPLACE. Préparez la présentation de votre boutique et des articles que vous souhaitez mettre en avant.',
+            image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['1. Créez votre compte', 'Choisissez Inscription dans la barre de navigation, saisissez votre nom et votre e-mail, puis sélectionnez le type de compte vendeur.'],
+              ['2. Préparez votre boutique', 'Choisissez un nom clair, indiquez votre activité et préparez des photos nettes de vos produits.'],
+              ['3. Publiez en toute transparence', 'La publication et la réception de commandes ne sont pas encore connectées dans cette version. N’indiquez pas de coordonnées de paiement dans les formulaires de démonstration.'],
+            ],
+            actions: [['Voir les conseils de vente', '/comment-vendre'], ['Préparer les images', '/centre-vendeur']],
+          },
+          '/centre-aide': {
+            title: 'Comment pouvons-nous vous aider ?',
+            eyebrow: 'CENTRE D’AIDE',
+            intro: 'Retrouvez des repères pratiques pour découvrir le catalogue, comprendre les parcours et utiliser le prototype en toute sécurité.',
+            image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Acheteurs', 'Pour rechercher et comparer des articles, consultez les guides Comment acheter, Paiement et Livraison.'],
+              ['Vendeurs', 'Pour préparer votre activité, consultez les pages Comment vendre, Créer une boutique et Centre vendeur.'],
+              ['Besoin d’une réponse ?', 'La FAQ rassemble les questions fréquentes. Les opérations de paiement, livraison et réclamation restent hors ligne dans cette démonstration.'],
+            ],
+            actions: [['Lire la FAQ', '/faq'], ['Nous contacter', '/contact']],
+          },
+          '/faq': {
+            title: 'Questions fréquentes',
+            eyebrow: 'FAQ',
+            intro: 'Les réponses ci-dessous décrivent le fonctionnement actuel du prototype LOME MARKETPLACE.',
+            image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1000&q=80',
+            questions: [
+              ['Comment acheter ?', 'Recherchez un article, vérifiez son prix et sa disponibilité, puis ajoutez-le au panier de démonstration. La commande n’est pas transmise à un vendeur.'],
+              ['Comment créer un compte ?', 'Utilisez Inscription dans la barre de navigation et renseignez votre nom, votre e-mail et un mot de passe conforme aux critères affichés.'],
+              ['Comment devenir vendeur ?', 'Créez un compte et choisissez le profil vendeur. Consultez ensuite la page Comment vendre pour préparer votre boutique.'],
+              ['Puis-je payer en ligne ?', 'TMoney et Flooz sont prévus, mais le prestataire marchand doit être activé avant tout paiement réel.'],
+              ['Comment fonctionne la livraison ?', 'Les délais et zones de livraison sont à convenir avec le vendeur lorsqu’un service de commande sera disponible. Le prototype ne réserve pas de livraison.'],
+              ['Puis-je retourner un article ?', 'Aucun achat réel n’étant effectué sur le site de démonstration, aucune procédure de retour n’y est activée.'],
+              ['Comment signaler un litige ?', 'Le dépôt et le traitement de litiges ne sont pas encore disponibles.'],
+              ['Comment ajouter des images à un article ?', 'Dans la page Centre vendeur, choisissez des fichiers image pour afficher des aperçus locaux. Ils ne sont pas téléversés ni publiés.'],
+            ],
+          },
+          '/comment-acheter': {
+            title: 'Acheter en quelques étapes',
+            eyebrow: 'GUIDE ACHETEUR',
+            intro: 'Parcourez les articles, utilisez la recherche et comparez les informations visibles avant de prendre contact ou de poursuivre votre visite.',
+            image: 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['1. Trouvez un article', 'Utilisez la barre de recherche ou sélectionnez une catégorie pour filtrer le catalogue.'],
+              ['2. Comparez les détails', 'Consultez le prix, le vendeur, la localisation, les avis de démonstration et la disponibilité indiquée.'],
+              ['3. Préparez votre panier', 'Le panier et le comparateur fonctionnent dans le navigateur pour prévisualiser une sélection. Ils ne créent pas de commande.'],
+              ['Avant tout achat réel', 'Vérifiez directement l’identité du vendeur et les conditions de l’offre. Aucun paiement ni achat réel n’est proposé par ce prototype.'],
+            ],
+          },
+          '/paiement': {
+            title: 'Paiement mobile',
+            eyebrow: 'PAIEMENT SÉCURISÉ',
+            intro: 'TMoney et Flooz sont prévus pour les paiements acheteurs. Leur activation nécessite le raccordement d’un prestataire de paiement agréé.',
+            image: 'https://images.unsplash.com/photo-1556742111-a301076d9d18?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Moyens prévus', 'TMoney et Flooz, sous réserve de la configuration des comptes marchands et de l’intégration technique.'],
+              ['Commission plateforme', 'La commission de 3,5 % est déduite du montant vendeur après confirmation du paiement. Elle n’est pas ajoutée au total acheteur.'],
+              ['Sécurité', 'Ne communiquez jamais votre code secret ou code de validation. Les paiements restent désactivés jusqu’à la mise en service du prestataire.'],
+            ],
+            paymentPreparation: true,
+          },
+          '/livraison': {
+            title: 'Livraison et remise des articles',
+            eyebrow: 'INFORMATIONS ACHETEURS',
+            intro: 'Les options de transport et la remise des articles ne sont pas encore réservées ou suivies par le site.',
+            image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Délais et disponibilité', 'Les lieux et horaires dépendent du vendeur et ne sont pas confirmés par le catalogue de démonstration.'],
+              ['Frais de transport', 'Aucun frais de livraison n’est calculé dans le prototype. Confirmez tous les frais avant un achat réel auprès du vendeur.'],
+              ['Suivi de commande', 'Le suivi et les notifications de livraison ne sont pas activés sur cette version.'],
+            ],
+          },
+          '/retours': {
+            title: 'Retours et remboursements',
+            eyebrow: 'INFORMATIONS ACHETEURS',
+            intro: 'Aucun achat réel ni paiement n’étant effectué sur ce prototype, le site ne peut pas enregistrer un retour ou déclencher un remboursement.',
+            image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Avant de commander', 'Vérifiez l’état, les caractéristiques et le prix de l’article ainsi que les conditions de retour proposées par le vendeur.'],
+              ['Demande de retour', 'Une procédure de retour en ligne n’est pas encore mise en place. Les conditions applicables devront être convenues avec le vendeur avant un achat réel.'],
+              ['Remboursement', 'Le site ne collecte aucun paiement et ne peut donc pas effectuer de remboursement.'],
+            ],
+          },
+          '/litiges': {
+            title: 'Aide en cas de problème',
+            eyebrow: 'ASSISTANCE ACHETEURS',
+            intro: 'Le dépôt et le suivi des réclamations ne sont pas encore disponibles dans cette démonstration.',
+            image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Conservez les informations utiles', 'Pour une transaction réalisée hors du prototype, gardez vos échanges, la description de l’article et les justificatifs pertinents.'],
+              ['Contactez le vendeur', 'Essayez de clarifier directement le problème avec le vendeur avant de convenir d’une solution.'],
+              ['Service de médiation', 'Aucun outil de dépôt, d’enquête ou de médiation n’est encore connecté à la plateforme.'],
+            ],
+          },
+          '/comment-vendre': {
+            title: 'Bien démarrer comme vendeur',
+            eyebrow: 'GUIDE VENDEUR',
+            intro: 'Une présentation précise et des visuels clairs aident les acheteurs à comprendre votre offre.',
+            image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Présentez votre activité', 'Choisissez un nom de boutique et une description qui permettent aux acheteurs de comprendre votre spécialité et votre localisation.'],
+              ['Soignez chaque article', 'Ajoutez un titre informatif, une catégorie, un prix en FCFA, un état de disponibilité et des photos représentatives.'],
+              ['Restez transparent', 'Indiquez clairement les caractéristiques, les délais et les conditions. La publication d’articles n’est pas encore reliée au catalogue dans cette version.'],
+            ],
+            actions: [['Préparer une boutique', '/creer-boutique'], ['Ouvrir le centre vendeur', '/centre-vendeur']],
+          },
+          '/creer-boutique': {
+            title: 'Préparer votre boutique',
+            eyebrow: 'ESPACE VENDEUR',
+            intro: 'Organisez les informations et les visuels nécessaires à une boutique accueillante avant sa mise en ligne.',
+            image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Nom et activité', 'Préparez un nom reconnaissable, le secteur de votre boutique et une courte description exacte.'],
+              ['Identité visuelle', 'Choisissez un logo lisible et une bannière de bonne qualité qui reflètent votre activité.'],
+              ['Vérification', 'Les démarches de validation vendeur et la création persistante de boutique ne sont pas encore activées.'],
+            ],
+            actions: [['Préparer des images', '/centre-vendeur'], ['Voir les tarifs', '/tarifs']],
+            imageEditor: true,
+          },
+          '/tarifs': {
+            title: 'Tarifs et frais',
+            eyebrow: 'TRANSPARENCE VENDEUR',
+            intro: 'Aucune commission ni formule payante n’est actuellement configurée dans le prototype.',
+            image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Pas de frais facturés par la démonstration', 'Le site ne traite pas de commandes, d’abonnements ou de paiements et ne facture aucun frais par cette interface.'],
+              ['Conditions futures', 'Les commissions, éventuels frais de service et modalités de versement devront être publiés avant l’ouverture des transactions.'],
+              ['Méfiez-vous des demandes de paiement', 'Ne versez pas d’argent au nom de LOME MARKETPLACE sur la base d’informations affichées dans cette maquette.'],
+            ],
+          },
+          '/publicite': {
+            title: 'Mettre en avant une boutique',
+            eyebrow: 'VISIBILITÉ VENDEUR',
+            intro: 'Cette page présente les pistes de visibilité envisagées pour aider les boutiques à présenter leurs offres.',
+            image: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Présenter vos nouveautés', 'Des emplacements éditoriaux pourront mettre en valeur des sélections et nouveautés lorsqu’un service de publication sera activé.'],
+              ['Des offres clairement identifiées', 'Les promotions devront préciser leur période, les articles concernés et le prix applicable.'],
+              ['Service non commercialisé', 'Aucun achat d’espace publicitaire ni ciblage payant ne peut être commandé depuis cette démonstration.'],
+            ],
+          },
+          '/centre-vendeur': {
+            title: 'Centre vendeur',
+            eyebrow: 'VOTRE ESPACE DE PRÉPARATION',
+            intro: 'Préparez les photos de votre boutique et de vos articles. Les champs ci-dessous vous permettent de prévisualiser des images avant une future publication.',
+            image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Préparez votre catalogue', 'Choisissez des photos nettes, prises sous un bon éclairage, et représentant fidèlement chaque produit.'],
+              ['Un aperçu privé sur cet appareil', 'La sélection de fichiers affiche des aperçus dans votre navigateur. Les images ne sont ni envoyées au serveur ni publiées dans le catalogue.'],
+              ['Publication en préparation', 'La gestion persistante des articles et l’espace de stockage des images ne sont pas encore activés.'],
+            ],
+            actions: [['Lire le guide vendeur', '/comment-vendre'], ['Créer une boutique', '/creer-boutique']],
+            paymentSettings: true,
+            imageEditor: true,
+          },
+          '/cgu': {
+            title: 'Conditions générales d’utilisation',
+            eyebrow: 'INFORMATIONS LÉGALES',
+            intro: 'Cette maquette est un prototype de présentation de LOME MARKETPLACE. Le présent texte est informatif et ne constitue pas des conditions générales définitives.',
+            image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Objet de la démonstration', 'Le site permet de découvrir une interface de catalogue, de recherche, de panier local et des parcours de compte de démonstration.'],
+              ['Absence de transaction', 'Aucune commande, offre commerciale, livraison, transaction ou obligation d’achat n’est conclue au moyen de cette maquette.'],
+              ['Informations à compléter', 'Avant une ouverture au public, l’éditeur devra préciser son identité, les règles applicables, les responsabilités et les modalités de traitement des réclamations.'],
+            ],
+          },
+          '/confidentialite': {
+            title: 'Confidentialité et données',
+            eyebrow: 'VIE PRIVÉE',
+            intro: 'Cette page décrit les limites du prototype et les précautions à prendre. Elle ne remplace pas une politique de confidentialité complète.',
+            image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Comptes de démonstration', 'Les comptes enregistrés localement sont stockés sur le serveur de développement. Ne réutilisez pas un mot de passe important.'],
+              ['Session', 'La connexion utilise un cookie de session HttpOnly pour le prototype. La configuration de production doit être auditée et sécurisée avant toute ouverture au public.'],
+              ['Newsletter', 'Si vous vous inscrivez, votre adresse e-mail et la date d’inscription sont conservées dans le stockage local du serveur afin de gérer la liste. Vous pouvez demander son retrait depuis le formulaire de newsletter. Aucun e-mail n’est envoyé automatiquement dans ce prototype.'],
+              ['Images sélectionnées', 'Les images choisies dans le centre vendeur sont prévisualisées dans votre navigateur et ne sont pas envoyées au serveur.'],
+              ['Mise en production', 'L’éditeur devra détailler les données collectées, leurs finalités, leur durée de conservation, leurs destinataires et les droits des personnes.'],
+            ],
+          },
+          '/cookies': {
+            title: 'Cookies et stockage local',
+            eyebrow: 'VIE PRIVÉE',
+            intro: 'LOME MARKETPLACE utilise les mécanismes nécessaires à l’expérience de démonstration et à l’ouverture de session.',
+            image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Cookie de session', 'Un cookie HttpOnly permet au serveur de reconnaître la session de connexion. Il est utilisé pour les parcours de compte et d’administration.'],
+              ['Aucun outil publicitaire configuré', 'Cette version ne configure pas de mesure d’audience ou de publicité personnalisée par cookie.'],
+              ['Prévisualisation des photos', 'Les fichiers image du centre vendeur sont affichés temporairement dans le navigateur et ne sont pas enregistrés par le site.'],
+            ],
+          },
+          '/conditions-vendeur': {
+            title: 'Conditions applicables aux vendeurs',
+            eyebrow: 'INFORMATIONS VENDEUR',
+            intro: 'Ces repères préliminaires ne constituent pas un contrat vendeur. Les conditions complètes devront être définies avant l’activation des ventes.',
+            image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1000&q=80',
+            sections: [
+              ['Exactitude des annonces', 'Les vendeurs devront fournir des informations loyales, des photos représentatives et des prix à jour.'],
+              ['Responsabilité des offres', 'Les responsabilités relatives aux produits, stocks, garanties, paiements et livraisons devront être encadrées dans les conditions définitives.'],
+              ['Règles et vérification', 'Les critères de vérification des vendeurs, les articles autorisés, les frais et les mesures en cas de manquement restent à définir.'],
+              ['Prototype sans vente', 'La création et la publication persistantes d’une boutique ne sont pas encore disponibles sur cette version.'],
+            ],
+          },
+        };
+
+        function createInfoAction([label, href]) {
+          const link = document.createElement('a');
+          link.className = 'btn primary';
+          link.href = href;
+          link.textContent = label;
+          return link;
+        }
+
+        function renderImageEditor(container) {
+          const editor = document.createElement('section');
+          editor.className = 'image-editor';
+          const heading = document.createElement('h2');
+          heading.textContent = 'Emplacements photo de votre boutique et de vos articles';
+          const description = document.createElement('p');
+          description.textContent = 'Ajoutez jusqu’à six images (5 Mo maximum chacune) : une bannière de boutique et cinq photos d’article. Les aperçus restent dans ce navigateur et ne sont pas téléversés.';
+          const slots = document.createElement('div');
+          slots.className = 'image-slot-grid';
+          const status = document.createElement('p');
+          status.className = 'editor-status';
+          status.setAttribute('role', 'status');
+          status.setAttribute('aria-live', 'polite');
+          const labels = ['Bannière de boutique', 'Photo principale de l’article', 'Article — vue de face', 'Article — vue de détail', 'Article — autre angle', 'Article — mise en situation'];
+          let selectedImageCount = 0;
+
+          labels.forEach((label, index) => {
+            const slot = document.createElement('label');
+            slot.className = 'image-slot';
+            const title = document.createElement('strong');
+            title.textContent = label;
+            const preview = document.createElement('div');
+            preview.className = 'image-slot-placeholder image-slot-preview';
+            preview.textContent = '＋';
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.setAttribute('aria-label', `Choisir une image : ${label}`);
+            input.addEventListener('change', () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              if (!file.type.startsWith('image/')) {
+                input.value = '';
+                status.textContent = 'Choisissez un fichier image valide.';
+                return;
+              }
+              if (file.size > 5 * 1024 * 1024) {
+                input.value = '';
+                status.textContent = 'Chaque image doit peser 5 Mo maximum.';
+                return;
+              }
+              const image = document.createElement('img');
+              image.src = URL.createObjectURL(file);
+              image.alt = `Aperçu ${label.toLowerCase()}`;
+              image.onload = () => URL.revokeObjectURL(image.src);
+              preview.replaceChildren(image);
+              if (input.dataset.hasImage !== 'true') {
+                input.dataset.hasImage = 'true';
+                selectedImageCount += 1;
+              }
+              status.textContent = `${selectedImageCount} image${selectedImageCount === 1 ? '' : 's'} sélectionnée${selectedImageCount === 1 ? '' : 's'} pour l’aperçu local. Aucune image n’a été envoyée.`;
+            });
+            slot.append(title, preview, input);
+            slots.append(slot);
+          });
+          editor.append(heading, description, slots, status);
+          container.append(editor);
+        }
+
+        async function renderPaymentPreparation(container) {
+          const section = document.createElement('section');
+          section.className = 'payment-preparation';
+          const heading = document.createElement('h2');
+          heading.textContent = 'Paiement par portefeuille mobile';
+          const description = document.createElement('p');
+          description.className = 'payment-note';
+          description.textContent = 'Le règlement acheteur sera encaissé par la marketplace. TMoney et Flooz seront proposés dès que le prestataire marchand sera activé.';
+          const methods = document.createElement('div');
+          methods.className = 'payment-method-list';
+          ['TMoney', 'Flooz'].forEach((method) => {
+            const badge = document.createElement('span');
+            badge.className = 'payment-method-badge';
+            badge.textContent = method;
+            methods.append(badge);
+          });
+          const fee = document.createElement('p');
+          fee.className = 'payment-note';
+          fee.textContent = 'Commission : 3,5 % prélevée sur la part du vendeur. Le prix affiché à l’acheteur n’est pas majoré.';
+          const note = document.createElement('p');
+          note.className = 'payment-note';
+          note.setAttribute('role', 'status');
+          const checkout = document.createElement('button');
+          checkout.className = 'btn primary';
+          checkout.type = 'button';
+          checkout.disabled = true;
+          checkout.textContent = 'Paiement bientôt disponible';
+
+          try {
+            const response = await apiFetch('/api/payments/config');
+            const config = await response.json();
+            if (!response.ok) throw new Error(config.error || 'Impossible de vérifier la configuration de paiement.');
+            if (config.checkoutAvailable) {
+              checkout.disabled = false;
+              checkout.textContent = 'Continuer vers le paiement';
+            } else {
+              note.textContent = config.message;
+            }
+          } catch (error) {
+            note.textContent = apiErrorMessage(error, 'Configuration du paiement indisponible.');
+          }
+          section.append(heading, description, methods, fee, note, checkout);
+          container.append(section);
+        }
+
+        async function renderVendorPaymentSettings(container) {
+          const section = document.createElement('section');
+          section.className = 'vendor-payment-settings';
+          const heading = document.createElement('h2');
+          heading.textContent = 'Coordonnées de reversement';
+          const explanation = document.createElement('p');
+          explanation.className = 'payment-note';
+          explanation.textContent = 'Ajoutez le numéro TMoney et/ou Flooz de votre compte marchand. Il servira uniquement au reversement de votre part après déduction de la commission de 3,5 %.';
+          const status = document.createElement('p');
+          status.className = 'editor-status';
+          status.setAttribute('role', 'status');
+          status.setAttribute('aria-live', 'polite');
+          section.append(heading, explanation, status);
+          container.append(section);
+
+          try {
+            const sessionResponse = await apiFetch('/api/auth/me');
+            const session = await sessionResponse.json();
+            if (!sessionResponse.ok) throw new Error(session.error || 'Impossible de vérifier la session.');
+            if (!session.user) {
+              status.textContent = 'Connectez-vous avec votre compte vendeur pour enregistrer vos coordonnées.';
+              return;
+            }
+            if (session.user.role !== 'vendor') {
+              status.textContent = 'Ces coordonnées sont réservées aux comptes vendeurs.';
+              return;
+            }
+
+            const settingsResponse = await apiFetch('/api/vendor/payment-settings');
+            const settings = await settingsResponse.json();
+            if (!settingsResponse.ok) throw new Error(settings.error || 'Impossible de charger vos coordonnées.');
+            const form = document.createElement('form');
+            form.className = 'vendor-payment-form';
+            const fields = [
+              ['tmoneyNumber', 'Numéro TMoney', settings.tmoneyNumber],
+              ['floozNumber', 'Numéro Flooz', settings.floozNumber],
+            ];
+            const inputs = {};
+            fields.forEach(([name, label, value]) => {
+              const field = document.createElement('label');
+              field.textContent = label;
+              const input = document.createElement('input');
+              input.name = name;
+              input.type = 'tel';
+              input.autocomplete = 'tel';
+              input.inputMode = 'tel';
+              input.placeholder = '+228 90 00 00 00';
+              input.pattern = '(\\+?228\\s?)?[0-9\\s-]{8,16}';
+              input.value = value;
+              inputs[name] = input;
+              field.append(input);
+              form.append(field);
+            });
+            const save = document.createElement('button');
+            save.className = 'btn primary';
+            save.type = 'submit';
+            save.textContent = 'Enregistrer mes coordonnées';
+            form.append(save);
+            form.addEventListener('submit', async (event) => {
+              event.preventDefault();
+              if (!form.reportValidity()) return;
+              save.disabled = true;
+              status.textContent = '';
+              try {
+                const response = await apiFetch('/api/vendor/payment-settings', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    tmoneyNumber: inputs.tmoneyNumber.value,
+                    floozNumber: inputs.floozNumber.value,
+                  }),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Impossible d’enregistrer vos coordonnées.');
+                inputs.tmoneyNumber.value = result.tmoneyNumber;
+                inputs.floozNumber.value = result.floozNumber;
+                status.textContent = 'Coordonnées de reversement enregistrées.';
+              } catch (error) {
+                status.textContent = apiErrorMessage(error, 'Impossible d’enregistrer vos coordonnées.');
+              } finally {
+                save.disabled = false;
+              }
+            });
+            section.append(form);
+          } catch (error) {
+            status.textContent = apiErrorMessage(error, 'Connectez-vous avec votre compte vendeur pour gérer vos coordonnées.');
+          }
+        }
+
+        const currentInfoPage = informationPages[window.location.pathname.replace(/\/$/, '')];
+        if (currentInfoPage) {
+          document.querySelector('#marketplace-main').classList.add('hidden');
+          document.querySelector('#admin-main').classList.add('hidden');
+          const infoMain = document.querySelector('#info-main');
+          infoMain.classList.remove('hidden');
+          document.title = `${currentInfoPage.title} | LOME MARKETPLACE`;
+
+          const hero = document.createElement('section');
+          hero.className = 'info-hero';
+          const copy = document.createElement('div');
+          copy.className = 'info-hero-copy';
+          const eyebrow = document.createElement('span');
+          eyebrow.className = 'eyebrow';
+          eyebrow.textContent = currentInfoPage.eyebrow;
+          const title = document.createElement('h1');
+          title.textContent = currentInfoPage.title;
+          const intro = document.createElement('p');
+          intro.textContent = currentInfoPage.intro;
+          copy.append(eyebrow, title, intro);
+
+          const actions = document.createElement('div');
+          actions.className = 'info-actions';
+          (currentInfoPage.actions || []).forEach((action) => {
+            actions.append(createInfoAction(action));
+          });
+          const backLink = document.createElement('a');
+          backLink.className = 'info-back';
+          backLink.href = '/';
+          backLink.textContent = '← Retour à l’accueil';
+          if (currentInfoPage.actions?.length) copy.append(actions);
+          copy.append(backLink);
+
+          const heroImage = document.createElement('img');
+          heroImage.className = 'info-hero-image';
+          heroImage.src = currentInfoPage.image;
+          heroImage.alt = `Illustration : ${currentInfoPage.title}`;
+          heroImage.loading = 'lazy';
+          hero.append(copy, heroImage);
+          infoMain.append(hero);
+
+          if (currentInfoPage.questions) {
+            const questionGrid = document.createElement('div');
+            questionGrid.className = 'faq-grid';
+            currentInfoPage.questions.forEach(([question, answer]) => {
+              const item = document.createElement('details');
+              item.className = 'faq-item';
+              const summary = document.createElement('summary');
+              summary.textContent = question;
+              const answerText = document.createElement('p');
+              answerText.textContent = answer;
+              item.append(summary, answerText);
+              questionGrid.append(item);
+            });
+            infoMain.append(questionGrid);
+          } else {
+            const sectionGrid = document.createElement('div');
+            sectionGrid.className = 'info-section-grid';
+            currentInfoPage.sections.forEach(([headingText, bodyText]) => {
+              const section = document.createElement('section');
+              section.className = 'info-section-card';
+              const heading = document.createElement('h2');
+              heading.textContent = headingText;
+              const body = document.createElement('p');
+              body.textContent = bodyText;
+              section.append(heading, body);
+              sectionGrid.append(section);
+            });
+            infoMain.append(sectionGrid);
+          }
+
+          if (currentInfoPage.paymentPreparation) renderPaymentPreparation(infoMain);
+          if (currentInfoPage.paymentSettings) renderVendorPaymentSettings(infoMain);
+          if (currentInfoPage.imageEditor) renderImageEditor(infoMain);
+        }
+
+        const chatWidget = document.querySelector('#chat-widget');
+        if (!window.location.pathname.startsWith('/admin')) {
+          const chatPanel = document.querySelector('#chat-panel');
+          const chatLauncher = document.querySelector('#chat-launcher');
+          const chatMessages = document.querySelector('#chat-messages');
+          const chatForm = document.querySelector('#chat-form');
+          const chatInput = document.querySelector('#chat-input');
+          const chatSubmit = chatForm.querySelector('button[type="submit"]');
+          const normalizeChatText = (value) =>
+            value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+          function scrollChatToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          }
+
+          function addChatMessage(text, role = 'assistant', href = '') {
+            const message = document.createElement('div');
+            message.className = `chat-message${role === 'user' ? ' user' : ''}`;
+            message.textContent = text;
+            if (href) {
+              const link = document.createElement('a');
+              link.href = href;
+              link.textContent = 'Consulter cette page';
+              message.append(document.createElement('br'), link);
+            }
+            chatMessages.append(message);
+            scrollChatToBottom();
+            return message;
+          }
+
+          function addChatProductResults(message, products, query) {
+            products.slice(0, 3).forEach((product) => {
+              const card = document.createElement('article');
+              card.className = 'chat-product';
+              const image = document.createElement('img');
+              image.src = product.image;
+              image.alt = '';
+              image.loading = 'lazy';
+              const details = document.createElement('div');
+              const title = document.createElement('strong');
+              title.textContent = product.name;
+              const price = document.createElement('span');
+              price.textContent = formatPrice(product.price);
+              details.append(title, price);
+              card.append(image, details);
+              message.append(card);
+            });
+            const viewResults = document.createElement('a');
+            viewResults.href = `/?search=${encodeURIComponent(query)}#popular`;
+            viewResults.textContent = 'Afficher les résultats dans le catalogue';
+            message.append(document.createElement('br'), viewResults);
+            scrollChatToBottom();
+          }
+
+          async function replyToChat(text) {
+            const normalized = normalizeChatText(text);
+            const addPageAnswer = (answer, path) => {
+              addChatMessage(answer, 'assistant', path);
+            };
+
+            if (/^(bonjour|bonsoir|salut|hello|hi|coucou)\b/.test(normalized)) {
+              addChatMessage('Bonjour ! Je peux vous aider à rechercher un produit, comprendre les pages du site ou préparer votre espace vendeur. Que recherchez-vous ?');
+              return;
+            }
+            if (/\b(merci|thanks|remercie)\b/.test(normalized)) {
+              addChatMessage('Avec plaisir ! Vous pouvez aussi poser une question sur un produit, la livraison ou votre compte.');
+              return;
+            }
+            if (/\b(paiement|payer|paie|carte bancaire|mobile money)\b/.test(normalized)) {
+              addPageAnswer('Le paiement en ligne n’est pas activé dans cette démonstration. Ne saisissez pas de coordonnées bancaires sur le site.', '/paiement');
+              return;
+            }
+            if (/\b(livraison|livrer|livre|transport|expedition)\b/.test(normalized)) {
+              addPageAnswer('Les options, frais et délais de livraison ne sont pas gérés par le prototype. Ils devront être confirmés avec le vendeur avant tout achat réel.', '/livraison');
+              return;
+            }
+            if (/\b(retour|remboursement|rembourser|echanger)\b/.test(normalized)) {
+              addPageAnswer('Aucun achat réel n’est effectué sur le site de démonstration. Consultez la page dédiée pour les informations sur les retours.', '/retours');
+              return;
+            }
+            if (/\b(litige|reclamation|probleme|plainte)\b/.test(normalized)) {
+              addPageAnswer('Le dépôt et le suivi des réclamations ne sont pas encore activés. Voici les informations actuellement disponibles.', '/litiges');
+              return;
+            }
+            if (/\b(vendeur|vendre|boutique|magasin|inscrire.*vendeur)\b/.test(normalized)) {
+              addPageAnswer('Pour commencer, créez un compte vendeur et préparez les photos de votre boutique et de vos articles. La publication et les ventes ne sont pas encore activées.', '/centre-vendeur');
+              return;
+            }
+            if (/\b(compte|inscription|inscrire|connexion|connecter|mot de passe)\b/.test(normalized)) {
+              addPageAnswer('Utilisez les boutons Connexion ou Inscription en haut de la page. La récupération de mot de passe est disponible dans la fenêtre de connexion.', '/confidentialite');
+              return;
+            }
+            if (/\b(aide|faq|contact|humain|conseiller|parler)\b/.test(normalized)) {
+              addPageAnswer('Je suis l’assistant automatique du prototype ; aucune conversation avec un conseiller n’est transmise. Consultez les réponses fréquentes ou les informations de contact.', '/centre-aide');
+              return;
+            }
+
+            const query = text
+              .replace(/^(est-ce que vous avez|avez-vous|je cherche|je voudrais|je veux|trouve-moi|trouve moi|cherche|montre-moi|montre moi|quel est le prix de|combien coute|combien coûte)\s*/i, '')
+              .replace(/\b(svp|merci|un|une|des|du|de la|le|la|les|produit|produits)\b/gi, ' ')
+              .replace(/[?!.,]/g, ' ')
+              .trim();
+            if (query.length < 2) {
+              addChatMessage('Je n’ai pas compris la demande. Essayez « téléphone Samsung », « livraison » ou « comment vendre ? ».');
+              return;
+            }
+
+            const response = await apiFetch(`/api/products?search=${encodeURIComponent(query)}`);
+            const products = await response.json();
+            if (!response.ok) throw new Error(products.error || 'La recherche dans le catalogue a échoué.');
+            if (!products.length) {
+              addChatMessage(`Je n’ai pas trouvé de produit correspondant à « ${query} ». Essayez un nom de produit, une catégorie ou le nom d’une boutique.`);
+              return;
+            }
+            const resultMessage = addChatMessage(`${products.length} article${products.length === 1 ? '' : 's'} trouvé${products.length === 1 ? '' : 's'} dans le catalogue :`);
+            addChatProductResults(resultMessage, products, query);
+          }
+
+          chatLauncher.addEventListener('click', () => {
+            const isOpening = chatPanel.hidden;
+            chatPanel.hidden = !isOpening;
+            chatLauncher.setAttribute('aria-expanded', String(isOpening));
+            if (isOpening) {
+              if (!chatMessages.childElementCount) {
+                addChatMessage('Bonjour ! Je peux rechercher les articles du catalogue et vous orienter vers les pages d’aide. Les achats et le paiement ne sont pas activés.');
+              }
+              chatInput.focus();
+            }
+          });
+          document.querySelector('#chat-close').addEventListener('click', () => {
+            chatPanel.hidden = true;
+            chatLauncher.setAttribute('aria-expanded', 'false');
+            chatLauncher.focus();
+          });
+          document.querySelectorAll('[data-chat-question]').forEach((button) => {
+            button.addEventListener('click', () => {
+              chatInput.value = button.dataset.chatQuestion;
+              chatForm.requestSubmit();
+            });
+          });
+          chatForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text || chatSubmit.disabled) return;
+            addChatMessage(text, 'user');
+            chatInput.value = '';
+            chatSubmit.disabled = true;
+            chatInput.disabled = true;
+            try {
+              await replyToChat(text);
+            } catch (error) {
+              addChatMessage(apiErrorMessage(error, 'Impossible de répondre pour le moment.'));
+            } finally {
+              chatSubmit.disabled = false;
+              chatInput.disabled = false;
+              chatInput.focus();
+            }
+          });
+          document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !chatPanel.hidden) {
+              chatPanel.hidden = true;
+              chatLauncher.setAttribute('aria-expanded', 'false');
+              chatLauncher.focus();
+            }
+          });
+        } else {
+          chatWidget.classList.add('hidden');
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <div class="brand">
+          <div class="brand-mark">L</div>
+          <div>
+            <div class="brand-name">LOME MARKETPLACE</div>
+            <div class="brand-subtitle">Achetez, vendez et développez votre business</div>
+          </div>
+        </div>
+
+        <div class="search">
+          <span>🔍</span>
+          <input type="search" placeholder="Que recherchez-vous ?" aria-label="Rechercher" />
+          <button class="btn primary" type="button">Rechercher</button>
+          <p id="search-status" class="status-message" role="status" aria-live="polite"></p>
+        </div>
+
+        <nav class="nav" aria-label="Navigation principale">
+          <a class="active" href="#home">Accueil</a>
+          <a href="#popular">Produits</a>
+          <a href="#stores">Boutiques</a>
+          <a href="#business">Devis</a>
+          <a href="#verified-vendors">Vendeur</a>
+        </nav>
+
+        <div class="actions">
+          <button id="login-button" class="btn ghost" type="button">Connexion</button>
+          <button id="register-button" class="btn ghost" type="button">Inscription</button>
+          <span id="auth-greeting" class="status-message hidden" aria-live="polite"></span>
+          <button id="logout-button" class="btn ghost hidden" type="button">Déconnexion</button>
+          <button class="btn primary" type="button" data-vendor-signup>Devenir vendeur</button>
+          <button id="cart-button" class="btn dark" type="button" aria-label="Panier, 0 article">🛒 0</button>
+          <p id="auth-status" class="status-message auth-status" role="status" aria-live="polite"></p>
+          <p id="actions-status" class="status-message actions-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </header>
+
+    <main class="container" id="marketplace-main">
+      <section class="hero" id="home">
+        <div>
+          <div class="eyebrow">PLACE DE MARCHÉ MULTI-VENDEURS</div>
+          <h1>LOME MARKETPLACE</h1>
+          <h2>Achetez, vendez et développez votre business.</h2>
+          <p>Découvrez les produits de démonstration proposés par des vendeurs au Togo. Recherchez, comparez les offres et utilisez le panier local du prototype.</p>
+          <div class="hero-actions">
+            <button id="hero-search" class="btn primary" type="button">Rechercher</button>
+            <button class="btn secondary" type="button" data-vendor-signup>Devenir vendeur</button>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="visual">
+            <div class="visual-badge">Livraison rapide</div>
+            <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80" alt="Top ventes" />
+          </div>
+          <div class="mini-stats">
+            <div class="mini-card"><strong>8</strong><span>Produits de démonstration</span></div>
+            <div class="mini-card"><strong>6</strong><span>Vendeurs vérifiés</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="categories">
+        <div class="section-header">
+          <h3>Catégories</h3>
+          <p>Choisissez une catégorie pour filtrer le catalogue</p>
+        </div>
+        <div class="category-grid" id="category-list"></div>
+        <p id="catalog-status" class="status-message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="section" id="popular">
+        <div class="section-header">
+          <h3 id="popular-title">Produits populaires</h3>
+          <p id="popular-subtitle">Catalogue de démonstration fourni par l’API</p>
+        </div>
+        <div class="product-grid" id="popular-products"></div>
+      </section>
+
+      <section class="section" id="deals">
+        <div class="section-header">
+          <h3>🔥 Meilleures offres</h3>
+          <p>Offres calculées à partir du prix du catalogue</p>
+        </div>
+        <div class="product-grid" id="deal-products"></div>
+      </section>
+
+      <section class="section" id="stores">
+        <div class="section-header">
+          <h3>Boutiques recommandées</h3>
+          <p>Des marques fiables et très actives</p>
+        </div>
+        <div class="shop-grid" id="store-list"></div>
+      </section>
+
+      <section class="section" id="verified-vendors">
+        <div class="section-header">
+          <h3>Vendeurs vérifiés</h3>
+          <p>Validation effectuée par l’administration</p>
+        </div>
+        <div class="verified-row" id="vendor-list"></div>
+      </section>
+
+      <section class="section" style="background: linear-gradient(135deg, #f4fff8 0%, #eef7ff 100%);">
+        <div class="section-header">
+          <h3>🇹🇬 MADE IN TOGO</h3>
+          <p>Produits fabriqués et transformés localement</p>
+        </div>
+        <div class="made-grid">
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1531058020387-3be344556be6?auto=format&fit=crop&w=700&q=80" alt="Objets artisanaux" loading="lazy" /><strong>Artisanat</strong><small>Made in Togo</small></div>
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=700&q=80" alt="Culture agricole" loading="lazy" /><strong>Agriculture</strong><small>Made in Togo</small></div>
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=700&q=80" alt="Produits alimentaires" loading="lazy" /><strong>Alimentation</strong><small>Made in Togo</small></div>
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=700&q=80" alt="Créations textiles" loading="lazy" /><strong>Textile</strong><small>Made in Togo</small></div>
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=700&q=80" alt="Soins et cosmétiques" loading="lazy" /><strong>Cosmétique</strong><small>Made in Togo</small></div>
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=700&q=80" alt="Mobilier" loading="lazy" /><strong>Meubles</strong><small>Made in Togo</small></div>
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=700&q=80" alt="Produits transformés" loading="lazy" /><strong>Produits transformés</strong><small>Made in Togo</small></div>
+          <div class="made-item"><img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=700&q=80" alt="Accessoires de mode" loading="lazy" /><strong>Accessoires</strong><small>Made in Togo</small></div>
+        </div>
+      </section>
+
+      <section class="business" id="business">
+        <div>
+          <div class="eyebrow" style="background: rgba(255, 255, 255, 0.12); color:white;">LOME BUSINESS</div>
+          <h3>Un espace dédié aux fournisseurs, aux achats en gros et aux demandes de devis.</h3>
+          <p>Aperçu de LOME BUSINESS : le parcours de devis et de commandes en gros sera connecté dans une prochaine version.</p>
+        </div>
+        <button class="btn primary" type="button" data-vendor-signup>Créer un compte vendeur</button>
+      </section>
+
+      <section class="section" style="margin-top:1.5rem;">
+        <div class="section-header">
+          <h3>Centre d’aide</h3>
+          <p>Questions fréquentes</p>
+        </div>
+        <div class="faq-grid" id="faq-list"></div>
+      </section>
+    </main>
+
+    <main id="info-main" class="container info-shell hidden"></main>
+
+    <main id="admin-main" class="admin-shell hidden">
+      <section id="admin-auth-view" class="admin-card hidden">
+        <span class="eyebrow">ESPACE SÉCURISÉ</span>
+        <h1 id="admin-auth-title">Connexion administrateur</h1>
+        <p id="admin-auth-description">Connectez-vous pour accéder au tableau de bord LOME MARKETPLACE.</p>
+        <form id="admin-login-form" class="hidden">
+          <label>
+            Adresse e-mail administrateur
+            <input id="admin-login-email" type="email" autocomplete="username" maxlength="254" required />
+          </label>
+          <label>
+            Mot de passe
+            <input id="admin-login-password" type="password" autocomplete="current-password" maxlength="128" required />
+          </label>
+          <button class="btn primary" type="submit">Se connecter</button>
+        </form>
+        <form id="admin-setup-form" class="hidden">
+          <label>
+            Nom administrateur
+            <input id="admin-setup-name" type="text" autocomplete="name" minlength="2" maxlength="80" required />
+          </label>
+          <label>
+            Adresse e-mail administrateur
+            <input id="admin-setup-email" type="email" autocomplete="email" maxlength="254" required />
+          </label>
+          <label>
+            Créer un mot de passe (8 caractères minimum, avec lettre et chiffre)
+            <input id="admin-setup-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" pattern="(?=.*[a-zA-Z])(?=.*[0-9]).{8,128}" required />
+          </label>
+          <button class="btn primary" type="submit">Créer le compte administrateur</button>
+        </form>
+        <p id="admin-auth-message" class="admin-message" role="alert" aria-live="assertive"></p>
+        <a class="admin-back" href="/">← Retour à la marketplace</a>
+      </section>
+
+      <section id="admin-dashboard-view" class="hidden">
+        <div class="admin-topbar">
+          <div>
+            <span class="eyebrow">ADMINISTRATION</span>
+            <h1>Tableau de bord</h1>
+            <p id="admin-welcome" class="status-message"></p>
+          </div>
+          <button id="admin-logout" class="btn ghost" type="button">Déconnexion</button>
+        </div>
+        <div id="admin-stats" class="admin-stats"></div>
+        <section class="admin-section admin-payment-report">
+          <h2>Recettes et paiements confirmés</h2>
+          <p id="admin-payment-note" class="payment-note">La commission est de 3,5 % du montant payé, prélevée sur la part vendeur. Les paiements non confirmés ne sont pas comptabilisés comme recettes.</p>
+          <div id="admin-payment-summary" class="admin-payment-summary"></div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Référence</th><th>Date</th><th>Acheteur</th><th>Moyen</th><th>Montant brut</th><th>Commission</th><th>Part vendeur</th></tr></thead>
+              <tbody id="admin-payment-ledger"></tbody>
+            </table>
+          </div>
+          <p id="admin-payments-empty" class="admin-empty hidden">Aucun paiement confirmé. Le tableau se remplira après activation du prestataire.</p>
+        </section>
+        <div class="admin-tables">
+          <section class="admin-section">
+            <h2>Comptes acheteurs et vendeurs</h2>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>Nom</th><th>E-mail</th><th>Type</th></tr></thead>
+                <tbody id="admin-users"></tbody>
+              </table>
+            </div>
+            <p id="admin-users-empty" class="admin-empty hidden">Aucun compte utilisateur.</p>
+          </section>
+          <section class="admin-section">
+            <h2>Catalogue des produits</h2>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>Produit</th><th>Boutique</th><th>Prix</th><th>Stock</th></tr></thead>
+                <tbody id="admin-products"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <section class="footer-newsletter" aria-labelledby="newsletter-title">
+          <div>
+            <h2 id="newsletter-title">Les nouvelles de LOME</h2>
+            <p>Nouveautés et offres, directement par e-mail.</p>
+          </div>
+          <form id="newsletter-form" class="newsletter-form">
+            <label class="hidden" for="newsletter-email">Votre adresse e-mail</label>
+            <input id="newsletter-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Votre adresse e-mail" required />
+            <button type="submit" name="action" value="subscribe">S’inscrire</button>
+            <label class="newsletter-consent">
+              <input id="newsletter-consent" type="checkbox" required />
+              <span>J’accepte de recevoir la newsletter. <a href="/confidentialite">Confidentialité</a>.</span>
+            </label>
+            <p id="newsletter-status" class="newsletter-status" role="status" aria-live="polite"></p>
+            <button id="newsletter-unsubscribe" class="newsletter-unsubscribe" type="button">Se désinscrire</button>
+          </form>
+        </section>
+      </div>
+      <div class="container footer-grid">
+        <div>
+          <h3>LOME MARKETPLACE</h3>
+          <ul>
+            <li><a href="/a-propos">À propos</a></li>
+            <li><a href="/contact">Contact</a></li>
+            <li><a href="/devenir-vendeur">Devenir vendeur</a></li>
+            <li><a href="/centre-aide">Centre d’aide</a></li>
+            <li><a href="/faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Acheteurs</h3>
+          <ul>
+            <li><a href="/comment-acheter">Comment acheter</a></li>
+            <li><a href="/paiement">Paiement</a></li>
+            <li><a href="/livraison">Livraison</a></li>
+            <li><a href="/retours">Retours</a></li>
+            <li><a href="/litiges">Litiges</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Vendeurs</h3>
+          <ul>
+            <li><a href="/comment-vendre">Comment vendre</a></li>
+            <li><a href="/creer-boutique">Créer une boutique</a></li>
+            <li><a href="/tarifs">Tarifs</a></li>
+            <li><a href="/publicite">Publicité</a></li>
+            <li><a href="/centre-vendeur">Centre vendeur</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Légal</h3>
+          <ul>
+            <li><a href="/admin/login">Connexion administrateur</a></li>
+            <li><a href="/cgu">CGU</a></li>
+            <li><a href="/confidentialite">Confidentialité</a></li>
+            <li><a href="/cookies">Cookies</a></li>
+            <li><a href="/conditions-vendeur">Conditions vendeur</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Contact</h3>
+          <p>Lomé, Togo</p>
+          <div class="footer-contact">
+            <a href="tel:+22898203113">📞 +228 98 20 31 13</a>
+            <a href="mailto:faglagbodja67@gmail.com">✉️ faglagbodja67@gmail.com</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <section id="chat-widget" class="chat-widget" aria-label="Assistant conversation">
+      <section id="chat-panel" class="chat-panel" aria-labelledby="chat-title" hidden>
+        <header class="chat-header">
+          <div>
+            <h2 id="chat-title">Assistant LOME</h2>
+            <p>Catalogue et informations du site</p>
+          </div>
+          <button id="chat-close" class="chat-close" type="button" aria-label="Fermer la conversation">×</button>
+        </header>
+        <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+        <div class="chat-suggestions" aria-label="Questions fréquentes">
+          <button type="button" data-chat-question="Comment acheter ?">Acheter</button>
+          <button type="button" data-chat-question="Comment fonctionne la livraison ?">Livraison</button>
+          <button type="button" data-chat-question="Comment devenir vendeur ?">Vendre</button>
+        </div>
+        <form id="chat-form" class="chat-form">
+          <label class="hidden" for="chat-input">Votre message</label>
+          <input id="chat-input" type="text" maxlength="240" autocomplete="off" placeholder="Écrivez votre question…" required />
+          <button type="submit">Envoyer</button>
+        </form>
+      </section>
+      <button id="chat-launcher" class="chat-launcher" type="button" aria-controls="chat-panel" aria-expanded="false">
+        <span aria-hidden="true">💬</span><span>Besoin d’aide ?</span>
+      </button>
+    </section>
+    <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-title">
+      <form id="auth-form" novalidate>
+        <div class="dialog-top">
+          <h2 id="auth-title">Connexion</h2>
+          <button id="auth-close" class="dialog-close" type="button" aria-label="Fermer">×</button>
+        </div>
+        <label id="auth-name-field" hidden>
+          Nom complet
+          <input id="auth-name" name="name" type="text" autocomplete="name" maxlength="80" />
+        </label>
+        <label>
+          Adresse e-mail
+          <input id="auth-email" name="email" type="email" autocomplete="email" maxlength="254" required />
+        </label>
+        <label id="auth-password-field">
+          <span id="auth-password-label">Mot de passe</span>
+          <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required />
+        </label>
+        <label id="auth-reset-token-field" hidden>
+          Code de réinitialisation
+          <input id="auth-reset-token" name="resetToken" type="text" autocomplete="one-time-code" maxlength="64" disabled />
+        </label>
+        <p id="auth-reset-info" class="status-message" hidden></p>
+        <p id="auth-message" role="alert" aria-live="assertive"></p>
+        <p id="auth-notice" class="status-message" role="status" aria-live="polite"></p>
+        <button id="auth-submit" class="btn primary" type="submit">Se connecter</button>
+        <button id="auth-forgot" class="auth-switch" type="button" hidden>Mot de passe oublié ?</button>
+        <button id="auth-switch" class="auth-switch" type="button">Pas encore de compte ? Inscrivez-vous</button>
+      </form>
+    </dialog>
+    <dialog id="cart-dialog" class="auth-dialog" aria-labelledby="cart-title">
+      <div class="dialog-top">
+        <h2 id="cart-title">Votre panier</h2>
+        <button class="dialog-close" type="button" data-close-dialog aria-label="Fermer">×</button>
+      </div>
+      <ul id="cart-list" class="dialog-list"></ul>
+      <p class="status-message">Panier de démonstration : aucune commande ni aucun paiement n’est envoyé.</p>
+    </dialog>
+    <dialog id="compare-dialog" class="auth-dialog" aria-labelledby="compare-title">
+      <div class="dialog-top">
+        <h2 id="compare-title">Comparer les produits</h2>
+        <button class="dialog-close" type="button" data-close-dialog aria-label="Fermer">×</button>
+      </div>
+      <ul id="compare-list" class="dialog-list"></ul>
+      <button id="clear-comparison" class="btn ghost" type="button">Vider le comparateur</button>
+    </dialog>
+  </body>
+</html>
